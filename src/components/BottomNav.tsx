@@ -1,35 +1,36 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, BookOpen, ListChecks, Clock, BarChart3 } from "lucide-react";
 
 const items = [
-  { to: "/", label: "Today", icon: Home },
-  { to: "/habits", label: "Habits", icon: ListChecks },
-  { to: "/study", label: "Study", icon: BookOpen },
-  { to: "/planner", label: "Plan", icon: Clock },
-  { to: "/history", label: "History", icon: BarChart3 },
+  { to: "/", label: "Today", emoji: "🌿" },
+  { to: "/habits", label: "Habits", emoji: "🔁" },
+  { to: "/study", label: "Study", emoji: "📚" },
+  { to: "/tasks", label: "Tasks", emoji: "✓" },
+  { to: "/planner", label: "Plan", emoji: "⏱" },
+  { to: "/history", label: "Stats", emoji: "📈" },
 ] as const;
 
 export function BottomNav() {
   const loc = useLocation();
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[min(560px,calc(100%-2rem))]">
-      <nav className="flex items-center justify-between gap-1 rounded-full bg-primary px-2 py-2 shadow-2xl">
-        {items.map(({ to, label, icon: Icon }) => {
-          const active = loc.pathname === to;
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-md animate-fade-up">
+      <div className="rounded-full bg-foreground/95 backdrop-blur-xl px-1.5 py-1.5 flex items-center justify-between shadow-[0_20px_50px_-15px_rgba(0,0,0,0.35)]">
+        {items.map((t) => {
+          const active = loc.pathname === t.to;
           return (
             <Link
-              key={to}
-              to={to}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 text-[11px] font-medium transition-colors ${
-                active ? "bg-white text-primary" : "text-white/70 hover:text-white"
+              key={t.to}
+              to={t.to}
+              className={`relative flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all duration-300 press ${
+                active ? "bg-background text-foreground shadow-sm" : "text-background/60 hover:text-background"
               }`}
+              aria-label={t.label}
             >
-              <Icon size={18} strokeWidth={2} />
-              <span>{label}</span>
+              <span className="text-[15px] leading-none">{t.emoji}</span>
+              {active && <span className="text-[12px] font-semibold tracking-tight animate-slide-in">{t.label}</span>}
             </Link>
           );
         })}
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 }
