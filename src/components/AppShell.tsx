@@ -10,6 +10,7 @@ import { Moon, Sun } from "lucide-react";
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   useEffect(() => { const stop = startMidnightWatcher(); return () => { stop && stop(); }; }, []);
   const [pretty, setPretty] = useState<{ weekday: string; rest: string }>({ weekday: "", rest: "" });
+  const { theme, toggle } = useTheme();
   useEffect(() => {
     const d = nowIST();
     const full = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -35,9 +36,13 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
               <ISTClock />
             </p>
           </div>
-          <div className="h-12 w-12 rounded-full bg-foreground text-background flex items-center justify-center font-display text-xl shrink-0 shadow-sm animate-pop">
-            d
-          </div>
+          <button
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="h-12 w-12 rounded-full bg-foreground text-background flex items-center justify-center font-display text-xl shrink-0 shadow-sm animate-pop press transition"
+          >
+            {theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
         </div>
       </header>
       <main className="px-5">{children}</main>
