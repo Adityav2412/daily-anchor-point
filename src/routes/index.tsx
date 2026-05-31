@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday } from "@/lib/store";
@@ -81,7 +81,10 @@ function TodayPage() {
 
       {/* Today's tasks preview */}
       <div className="card-soft p-5 mb-4 border">
-        <p className="text-xs font-semibold mb-3 text-foreground/60 uppercase tracking-wider">Today's tasks</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">Today's tasks</p>
+          <Link to="/tasks" className="text-[11px] underline text-foreground/60">Manage →</Link>
+        </div>
         {today.tasksToday.length === 0 ? (
           <p className="text-sm text-foreground/60">No tasks today. Keep it light.</p>
         ) : (
