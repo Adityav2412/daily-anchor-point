@@ -17,8 +17,9 @@ function PlannerPage() {
   const [end, setEnd] = useState("10:00");
   const [hours, setHours] = useState<string>(today.availableHours?.toString() ?? "");
   const [perm, setPerm] = useState<NotificationPermission | "unknown">("unknown");
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { if (typeof Notification !== "undefined") setPerm(Notification.permission); }, []);
+  useEffect(() => { setMounted(true); if (typeof Notification !== "undefined") setPerm(Notification.permission); }, []);
 
   useEffect(() => {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
