@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStore } from "@/lib/store";
 import { formatISTDate, lastNDays } from "@/lib/ist";
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),
@@ -32,44 +32,53 @@ function HistoryPage() {
   }, [habits, days]);
 
   const allKeys = Object.keys(days).sort().reverse();
-  const sel = selected ? days[selected] : null;
   const ink = "oklch(0.16 0.005 60)";
 
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
-        <Section title="Habits" subtitle="14 days" accent="card-mint">
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={chartData}>
-              <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false} interval={1} />
-              <YAxis hide domain={[0, 100]} />
-              <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={{ borderRadius: 12, fontSize: 12, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }} />
-              <Bar dataKey="habits" radius={[8, 8, 0, 0]} fill={ink} />
+        <Section title="Habits" subtitle="% completed per day" accent="card-mint">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+              <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11 }} />
+              <YAxis fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} label={{ value: "% done", angle: -90, position: "insideLeft", fontSize: 11 }} />
+              <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="habits" name="Habits %" radius={[6, 6, 0, 0]} fill={ink}>
+                <LabelList dataKey="habits" position="top" fontSize={9} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </Section>
 
         <Section title="Study" subtitle="hours per day" accent="card-lavender">
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={chartData}>
-              <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false} interval={1} />
-              <YAxis hide />
-              <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }} />
-              <Bar dataKey="study" radius={[8, 8, 0, 0]} fill={ink} />
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+              <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11 }} />
+              <YAxis fontSize={10} tickLine={false} axisLine={false} label={{ value: "Hours", angle: -90, position: "insideLeft", fontSize: 11 }} />
+              <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="study" name="Study hours" radius={[6, 6, 0, 0]} fill={ink}>
+                <LabelList dataKey="study" position="top" fontSize={9} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </Section>
 
         <Section title="Energy" subtitle="1–5 scale" accent="card-peach">
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={chartData}>
-              <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false} interval={1} />
-              <YAxis hide domain={[0, 5]} />
-              <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }} />
-              <Line type="monotone" dataKey="energy" stroke={ink} strokeWidth={2.5} dot={{ r: 3, fill: ink }} />
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={chartData} margin={{ top: 20, right: 16, left: 4, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+              <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11 }} />
+              <YAxis fontSize={10} tickLine={false} axisLine={false} domain={[0, 5]} ticks={[0,1,2,3,4,5]} label={{ value: "Energy", angle: -90, position: "insideLeft", fontSize: 11 }} />
+              <Legend verticalAlign="top" height={24} iconType="line" wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="energy" name="Energy (1–5)" stroke={ink} strokeWidth={2.5} dot={{ r: 3, fill: ink }}>
+                <LabelList dataKey="energy" position="top" fontSize={9} />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         </Section>
+
 
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
