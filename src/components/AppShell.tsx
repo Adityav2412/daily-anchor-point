@@ -4,6 +4,8 @@ import { BottomNav } from "./BottomNav";
 import { ISTClock } from "./ISTClock";
 import { startMidnightWatcher } from "@/lib/store";
 import { nowIST } from "@/lib/ist";
+import { useTheme } from "@/hooks/use-theme";
+import { Moon, Sun } from "lucide-react";
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   useEffect(() => { const stop = startMidnightWatcher(); return () => { stop && stop(); }; }, []);
