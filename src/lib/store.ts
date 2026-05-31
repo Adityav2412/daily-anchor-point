@@ -7,7 +7,7 @@ export interface HabitLog { done: boolean; reason?: string; }
 export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; }
 export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
 export interface StudyEntry { subject: string; minutes: number; }
-export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; actualMinutes?: number; notified?: boolean; }
+export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
 export interface DayData {
   habits: Record<string, HabitLog>; // habitId -> log
   study: {
