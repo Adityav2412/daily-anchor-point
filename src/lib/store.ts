@@ -31,6 +31,7 @@ export interface State {
   days: Record<string, DayData>;
   settings?: Settings;
   eodNotifiedKey?: string;
+  dataStartKey?: string;
 }
 
 const KEY = "focusflow_state_v1";
@@ -39,19 +40,31 @@ function emptyDay(): DayData {
   return { habits: {}, study: { entries: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [] };
 }
 
+function tomorrowKey(): string {
+  const t = nowIST();
+  t.setDate(t.getDate() + 1);
+  return istDateKey(t);
+}
+
 function load(): State {
   if (typeof window === "undefined") return { habits: [], days: {} };
+  let parsed: State | null = null;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) parsed = JSON.parse(raw);
   } catch {}
-  return {
+  const base: State = parsed ?? {
     habits: [
       { id: crypto.randomUUID(), name: "Drink water", category: "non-negotiable", createdAt: new Date().toISOString() },
       { id: crypto.randomUUID(), name: "10 min walk", category: "adapting", createdAt: new Date().toISOString() },
     ],
     days: {},
   };
+  if (!base.dataStartKey) {
+    base.dataStartKey = tomorrowKey();
+    try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
+  }
+  return base;
 }
 
 let state: State = load();
