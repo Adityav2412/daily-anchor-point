@@ -29,6 +29,8 @@ export interface DayData {
 export interface State {
   habits: Habit[];
   days: Record<string, DayData>;
+  settings?: Settings;
+  eodNotifiedKey?: string;
 }
 
 const KEY = "focusflow_state_v1";
