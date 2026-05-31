@@ -2,92 +2,110 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStore } from "@/lib/store";
-import { formatISTDate, lastNDays } from "@/lib/ist";
-import { Bar, BarChart, CartesianGrid, LabelList, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { formatISTDate } from "@/lib/ist";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),
   component: HistoryPage,
 });
 
+const ENERGY_EMOJI = ["·", "😴", "🙁", "😐", "🙂", "🔥"];
+
 function HistoryPage() {
   const habits = useStore((s) => s.habits);
   const days = useStore((s) => s.days);
+  const startKey = useStore((s) => s.dataStartKey);
   const [selected, setSelected] = useState<string | null>(null);
 
-  const chartData = useMemo(() => {
-    return lastNDays(14).map((k) => {
+  const visibleKeys = useMemo(() => {
+    if (!startKey) return [];
+    return Object.keys(days).filter((k) => k >= startKey).sort();
+  }, [days, startKey]);
+
+  const rows = useMemo(() => {
+    const total = habits.length || 1;
+    return visibleKeys.map((k) => {
       const d = days[k];
-      const totalH = habits.length || 1;
       const done = habits.filter((h) => d?.habits[h.id]?.done).length;
       const studyMin = d?.study.entries.reduce((a, e) => a + e.minutes, 0) ?? 0;
+      const hrs = +(studyMin / 60).toFixed(1);
       return {
-        date: formatISTDate(k),
         key: k,
-        habits: Math.round((done / totalH) * 100),
-        study: +(studyMin / 60).toFixed(2),
+        date: formatISTDate(k),
+        habitsPct: Math.round((done / total) * 100),
+        habitsAll: total > 0 && done === total,
+        habitsAny: done > 0,
+        study: hrs,
         energy: d?.study.energy ?? 0,
       };
     });
-  }, [habits, days]);
+  }, [habits, days, visibleKeys]);
 
-  const allKeys = Object.keys(days).sort().reverse();
-  const ink = "currentColor";
-  const gridStroke = "color-mix(in oklab, currentColor 18%, transparent)";
+  const maxStudy = Math.max(0.01, ...rows.map((r) => r.study));
+
+  const empty = rows.length === 0;
 
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
-        <Section title="Habits" subtitle="% completed per day" accent="card-mint">
-          <div className="text-foreground">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
-                <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 100]} label={{ value: "% done", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
-                <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11, color: ink }} />
-                <Bar dataKey="habits" name="Habits %" radius={[6, 6, 0, 0]} fill={ink}>
-                  <LabelList dataKey="habits" position="top" fontSize={9} fill={ink} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        {empty && (
+          <div className="card-paper rounded-2xl p-5 text-center text-sm text-muted-foreground italic">
+            Stats will begin from {startKey ? formatISTDate(startKey) : "tomorrow"}.
           </div>
+        )}
+
+        <Section title="Habits" accent="card-mint">
+          {empty ? <EmptyDots /> : (
+            <div className="flex flex-wrap gap-2">
+              {rows.map((r) => (
+                <div key={r.key} className="flex flex-col items-center gap-1.5">
+                  <span
+                    className="w-7 h-7 rounded-md"
+                    style={{ background: r.habitsAll ? "var(--success)" : r.habitsAny ? "color-mix(in oklab, var(--success) 45%, var(--muted))" : "color-mix(in oklab, currentColor 18%, transparent)" }}
+                    aria-label={`${r.date}: ${r.habitsPct}%`}
+                  />
+                  <span className="text-[9px] text-muted-foreground tabular-nums">{r.date}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
 
-        <Section title="Study" subtitle="hours per day" accent="card-lavender">
-          <div className="text-foreground">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
-                <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} label={{ value: "Hours", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
-                <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11, color: ink }} />
-                <Bar dataKey="study" name="Study hours" radius={[6, 6, 0, 0]} fill={ink}>
-                  <LabelList dataKey="study" position="top" fontSize={9} fill={ink} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <Section title="Study" accent="card-lavender">
+          {empty ? <EmptyDots /> : (
+            <div className="grid grid-cols-7 gap-3">
+              {rows.map((r) => {
+                const scale = 0.6 + (r.study / maxStudy) * 0.9;
+                return (
+                  <div key={r.key} className="flex flex-col items-center gap-1">
+                    <span
+                      className="font-display tabular-nums leading-none text-foreground"
+                      style={{ fontSize: `${scale}rem`, opacity: r.study === 0 ? 0.3 : 1 }}
+                    >
+                      {r.study}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground tabular-nums">{r.date}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Section>
 
-        <Section title="Energy" subtitle="1–5 scale" accent="card-peach">
-          <div className="text-foreground">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chartData} margin={{ top: 20, right: 16, left: 4, bottom: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
-                <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 5]} ticks={[0,1,2,3,4,5]} label={{ value: "Energy", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
-                <Legend verticalAlign="top" height={24} iconType="line" wrapperStyle={{ fontSize: 11, color: ink }} />
-                <Line type="monotone" dataKey="energy" name="Energy (1–5)" stroke={ink} strokeWidth={2.5} dot={{ r: 3, fill: ink }}>
-                  <LabelList dataKey="energy" position="top" fontSize={9} fill={ink} />
-                </Line>
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        <Section title="Energy" accent="card-peach">
+          {empty ? <EmptyDots /> : (
+            <div className="flex flex-wrap gap-3">
+              {rows.map((r) => (
+                <div key={r.key} className="flex flex-col items-center gap-1">
+                  <span className="text-xl leading-none" style={{ opacity: r.energy === 0 ? 0.3 : 1 }}>
+                    {ENERGY_EMOJI[r.energy] ?? "·"}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground tabular-nums">{r.date}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
-
-
-
 
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
@@ -95,11 +113,11 @@ function HistoryPage() {
               <h2 className="font-display text-2xl tracking-tight">Daily log</h2>
               <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">archive</span>
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums bg-foreground/5 px-2.5 py-1 rounded-full">{allKeys.length}</span>
+            <span suppressHydrationWarning className="text-xs text-muted-foreground tabular-nums bg-foreground/5 px-2.5 py-1 rounded-full">{visibleKeys.length}</span>
           </header>
           <div className="space-y-2 stagger">
-            {allKeys.length === 0 && <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing logged yet.</div>}
-            {allKeys.map((k) => {
+            {visibleKeys.length === 0 && <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing logged yet.</div>}
+            {[...visibleKeys].reverse().map((k) => {
               const d = days[k];
               const done = habits.filter((h) => d.habits[h.id]?.done).length;
               const sm = d.study.entries.reduce((a, e) => a + e.minutes, 0);
@@ -146,14 +164,17 @@ function HistoryPage() {
   );
 }
 
-function Section({ title, subtitle, accent, children }: { title: string; subtitle?: string; accent: string; children: React.ReactNode }) {
+function EmptyDots() {
+  return (
+    <div className="text-center text-xs text-muted-foreground italic py-2">No data yet.</div>
+  );
+}
+
+function Section({ title, accent, children }: { title: string; accent: string; children: React.ReactNode }) {
   return (
     <section>
       <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
-        <div className="flex items-baseline gap-2">
-          <h2 className="font-display text-2xl tracking-tight">{title}</h2>
-          {subtitle && <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{subtitle}</span>}
-        </div>
+        <h2 className="font-display text-2xl tracking-tight">{title}</h2>
       </header>
       <div className={`rounded-[24px] p-4 ${accent}`}>{children}</div>
     </section>
