@@ -4,7 +4,8 @@ import { istDateKey, lastNDays, nowIST } from "./ist";
 export type HabitCategory = "non-negotiable" | "adapting";
 export interface Habit { id: string; name: string; category: HabitCategory; createdAt: string; }
 export interface HabitLog { done: boolean; reason?: string; }
-export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; }
+export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; }
+export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; actualMinutes?: number; notified?: boolean; }
 export interface DayData {
@@ -28,6 +29,8 @@ export interface DayData {
 export interface State {
   habits: Habit[];
   days: Record<string, DayData>;
+  settings?: Settings;
+  eodNotifiedKey?: string;
 }
 
 const KEY = "focusflow_state_v1";
@@ -182,15 +185,80 @@ export const actions = {
     const key = istDateKey();
     store.set((s) => { s.days[key].blocks = s.days[key].blocks.filter((b) => b.id !== id); return s; });
   },
+  setTaskReminder(scope: "today" | "tomorrow", id: string, remindAt: string | null) {
+    const key = istDateKey();
+    store.set((s) => {
+      const arr = scope === "today" ? s.days[key].tasksToday : s.days[key].tasksTomorrow;
+      const t = arr.find((x) => x.id === id);
+      if (t) { t.remindAt = remindAt || undefined; t.reminded = false; }
+      return s;
+    });
+  },
+  markTaskReminded(id: string) {
+    const key = istDateKey();
+    store.set((s) => {
+      const t = s.days[key]?.tasksToday.find((x) => x.id === id);
+      if (t) t.reminded = true;
+      return s;
+    });
+  },
+  setSettings(patch: Partial<Settings>) {
+    store.set((s) => { s.settings = { eodReminderEnabled: true, eodMinutesBefore: 30, ...(s.settings || {}), ...patch }; return s; });
+  },
+  markEodNotified(key: string) {
+    store.set((s) => { s.eodNotifiedKey = key; return s; });
+  },
 };
 
-// Schedule next midnight rollover
+export function getSettings(): Settings {
+  return store.get().settings ?? { eodReminderEnabled: true, eodMinutesBefore: 30 };
+}
+
+function notify(title: string, body?: string) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  try { new Notification(title, { body, icon: "/favicon.ico", tag: title }); } catch {}
+}
+
+// Schedule next midnight rollover + task reminder ticks
 export function startMidnightWatcher() {
   if (typeof window === "undefined") return;
-  const tick = () => { store.rolloverIfNeeded(); };
+  const tick = () => {
+    store.rolloverIfNeeded();
+    checkReminders();
+  };
   tick();
-  const interval = setInterval(tick, 30 * 1000); // every 30s, cheap
+  const interval = setInterval(tick, 20 * 1000);
   return () => clearInterval(interval);
+}
+
+function checkReminders() {
+  const key = istDateKey();
+  const day = store.get().days[key];
+  if (!day) return;
+  const now = Date.now();
+  // per-task reminders
+  for (const t of day.tasksToday) {
+    if (t.done || !t.remindAt || t.reminded) continue;
+    const ts = new Date(t.remindAt).getTime();
+    if (!isNaN(ts) && ts <= now && now - ts < 15 * 60 * 1000) {
+      notify("Reminder: " + t.title, "Tap to open your tasks.");
+      actions.markTaskReminded(t.id);
+    }
+  }
+  // end-of-day reminder
+  const settings = getSettings();
+  if (settings.eodReminderEnabled && store.get().eodNotifiedKey !== key) {
+    const ist = nowIST();
+    const endOfDay = new Date(ist); endOfDay.setHours(23, 59, 0, 0);
+    const triggerAt = endOfDay.getTime() - settings.eodMinutesBefore * 60 * 1000;
+    if (ist.getTime() >= triggerAt) {
+      const incomplete = day.tasksToday.filter((t) => !t.done);
+      if (incomplete.length > 0) {
+        notify(`${incomplete.length} task${incomplete.length === 1 ? "" : "s"} still open`, incomplete.slice(0, 3).map((t) => "• " + t.title).join("\n"));
+      }
+      actions.markEodNotified(key);
+    }
+  }
 }
 
 export function dayStats(key: string, habits: Habit[]) {
