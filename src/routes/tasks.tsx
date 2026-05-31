@@ -26,7 +26,8 @@ function formatReminder(iso: string): string {
 
 function TasksPage() {
   const today = useToday();
-  const settings = useStore(() => getSettings());
+  const settingsRaw = useStore((s) => s.settings);
+  const settings = settingsRaw ?? { eodReminderEnabled: true, eodMinutesBefore: 30 };
   const [scope, setScope] = useState<"today" | "tomorrow">("today");
   const [title, setTitle] = useState("");
   const [high, setHigh] = useState(false);
