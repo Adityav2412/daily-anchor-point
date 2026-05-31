@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useToday, useStore, getSettings } from "@/lib/store";
+import { actions, useToday, useStore, getSettings, store } from "@/lib/store";
 import { Plus, X, Flame, Bell, BellOff } from "lucide-react";
 import { istDateKey, nowIST } from "@/lib/ist";
 
