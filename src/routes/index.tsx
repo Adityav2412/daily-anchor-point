@@ -104,11 +104,11 @@ function TodayPage() {
 
         {/* Energy + study */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="card-lavender rounded-[24px] p-5">
+          <button onClick={() => setEnergyOpen(true)} className="text-left card-lavender rounded-[24px] p-5 press transition">
             <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Energy</div>
             <div className="mt-3 font-display text-5xl leading-none">{today.study.energy ?? "—"}{today.study.energy && <span className="text-muted-foreground text-2xl">/5</span>}</div>
-            <div className="text-xs text-foreground/60 mt-1">Track your focus windows.</div>
-          </div>
+            <div className="text-xs text-foreground/60 mt-1">Tap to log today.</div>
+          </button>
           <div className="card-peach rounded-[24px] p-5">
             <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Studied</div>
             <div className="mt-3 font-display text-5xl leading-none">{Math.floor(studyMin/60)}<span className="text-muted-foreground text-2xl">h {studyMin%60}m</span></div>
