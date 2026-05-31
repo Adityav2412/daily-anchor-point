@@ -4,7 +4,8 @@ import { istDateKey, lastNDays, nowIST } from "./ist";
 export type HabitCategory = "non-negotiable" | "adapting";
 export interface Habit { id: string; name: string; category: HabitCategory; createdAt: string; }
 export interface HabitLog { done: boolean; reason?: string; }
-export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; }
+export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; }
+export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; actualMinutes?: number; notified?: boolean; }
 export interface DayData {
