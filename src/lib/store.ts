@@ -40,6 +40,8 @@ function emptyDay(): DayData {
   return { habits: {}, study: { entries: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [] };
 }
 
+const EMPTY_DAY = emptyDay();
+
 function tomorrowKey(): string {
   const t = nowIST();
   t.setDate(t.getDate() + 1);
@@ -117,7 +119,7 @@ export function useStore<T>(selector: (s: State) => T): T {
 export function useToday() {
   const key = istDateKey();
   useEffect(() => { store.ensureDay(key); store.rolloverIfNeeded(); }, [key]);
-  return useStore((s) => s.days[key] ?? emptyDay());
+  return useStore((s) => s.days[key] ?? EMPTY_DAY);
 }
 
 // mutations
