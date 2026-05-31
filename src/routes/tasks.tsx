@@ -66,18 +66,10 @@ function TasksPage() {
                 if (!title.trim()) return;
                 actions.addTask(scope, title.trim(), high ? "high" : "normal");
                 if (remindAt && scope === "today") {
-                  // attach to the newly added task (last one)
                   const key = istDateKey();
                   setTimeout(() => {
-                    const day = (window as unknown as { __noop?: never });
-                    void day;
-                    const latest = (useStore as unknown);
-                    void latest;
-                    // simpler: use store directly
-                    import("@/lib/store").then(({ store, actions }) => {
-                      const t = store.get().days[key]?.tasksToday.slice(-1)[0];
-                      if (t) actions.setTaskReminder("today", t.id, new Date(remindAt).toISOString());
-                    });
+                    const t = store.get().days[key]?.tasksToday.slice(-1)[0];
+                    if (t) actions.setTaskReminder("today", t.id, new Date(remindAt).toISOString());
                   }, 0);
                 }
                 setTitle(""); setHigh(false); setRemindAt("");
