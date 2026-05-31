@@ -12,4 +12,15 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Use the Netlify preset so `vite build` produces a Netlify-compatible
+  // output: static client assets in dist/client (including index.html) and
+  // a Netlify Function for SSR in dist/server.
+  nitro: {
+    preset: "netlify",
+    output: {
+      dir: "dist",
+      publicDir: "dist/client",
+      serverDir: "dist/server",
+    },
+  },
 });
