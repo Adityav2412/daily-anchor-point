@@ -17,6 +17,7 @@ function TodayPage() {
   const days = lastNDays(7);
   const [winDraft, setWinDraft] = useState(today.study.win ?? "");
   const [reflectDraft, setReflectDraft] = useState(today.study.reflection ?? "");
+  const [energyOpen, setEnergyOpen] = useState(false);
 
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
   const habitPct = habits.length ? Math.round((habitDone / habits.length) * 100) : 0;
