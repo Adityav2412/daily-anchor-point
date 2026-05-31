@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useToday, type TimeBlock } from "@/lib/store";
 import { nowIST } from "@/lib/ist";
-import { Plus, X, Bell } from "lucide-react";
+import { Plus, X, Bell, Check } from "lucide-react";
 
 export const Route = createFileRoute("/planner")({
   head: () => ({ meta: [{ title: "Plan — daily." }] }),
@@ -35,8 +35,8 @@ function PlannerPage() {
     return () => clearInterval(interval);
   }, [today.blocks]);
 
-  const plannedMin = today.blocks.reduce((a, b) => a + diffMin(b.start, b.end), 0);
-  const actualMin = today.blocks.reduce((a, b) => a + Math.max(0, b.actualMinutes ?? 0), 0);
+  const doneCount = today.blocks.filter((b) => b.done).length;
+  const totalCount = today.blocks.length;
 
   return (
     <AppShell title="Plan">
@@ -90,60 +90,55 @@ function PlannerPage() {
 
         <div className="space-y-2.5 stagger">
           {today.blocks.length === 0 && <div className="card-paper rounded-2xl py-8 text-center text-sm text-muted-foreground italic">No blocks yet.</div>}
-          {today.blocks.slice().sort((a,b) => a.start.localeCompare(b.start)).map((b) => {
-            const actual = Math.max(0, b.actualMinutes ?? 0);
-            const ah = Math.floor(actual / 60);
-            const am = actual % 60;
-            return (
-              <div key={b.id} className="card-paper rounded-2xl p-4 flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="font-display text-sm tabular-nums w-24">{b.start}–{b.end}</span>
-                  <span className="flex-1 text-[15px] font-medium">{b.label}</span>
-                  <button onClick={() => actions.removeBlock(b.id)} className="text-foreground/40 hover:text-foreground transition"><X size={14} /></button>
-                </div>
-                <div className="flex items-center gap-2 pl-1">
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Actual</span>
-                  <input
-                    type="number" min={0} placeholder="0"
-                    value={ah || ""}
-                    onChange={(e) => {
-                      const h = Math.max(0, parseInt(e.target.value) || 0);
-                      actions.updateBlock(b.id, { actualMinutes: h * 60 + am });
-                    }}
-                    className="w-12 rounded-full bg-background/70 px-2 py-1 text-xs text-center outline-none placeholder:text-foreground/40"
-                  />
-                  <span className="text-xs text-muted-foreground">h</span>
-                  <input
-                    type="number" min={0} max={59} placeholder="0"
-                    value={am || ""}
-                    onChange={(e) => {
-                      const m = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
-                      actions.updateBlock(b.id, { actualMinutes: ah * 60 + m });
-                    }}
-                    className="w-12 rounded-full bg-background/70 px-2 py-1 text-xs text-center outline-none placeholder:text-foreground/40"
-                  />
-                  <span className="text-xs text-muted-foreground">m</span>
-                </div>
+          {today.blocks.slice().sort((a,b) => a.start.localeCompare(b.start)).map((b) => (
+            <div key={b.id} className="card-paper rounded-2xl p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <span className="font-display text-sm tabular-nums w-24">{b.start}–{b.end}</span>
+                <span className={`flex-1 text-[15px] font-medium ${b.done ? "line-through opacity-50" : ""}`}>{b.label}</span>
+                <button onClick={() => actions.removeBlock(b.id)} className="text-foreground/40 hover:text-foreground transition"><X size={14} /></button>
               </div>
-            );
-          })}
+              <div className="flex items-center gap-2 pl-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition ${b.done ? "bg-foreground border-foreground" : "border-muted-foreground/40"}`}>
+                    {b.done && <Check size={12} className="text-background" />}
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={b.done || false}
+                    onChange={(e) => actions.updateBlock(b.id, { done: e.target.checked })}
+                  />
+                  <span className="text-xs text-muted-foreground">{b.done ? "Done" : "Not done"}</span>
+                </label>
+              </div>
+              {b.done === false && (
+                <input
+                  value={b.reason || ""}
+                  onChange={(e) => actions.updateBlock(b.id, { reason: e.target.value })}
+                  placeholder="Why not done?"
+                  className="w-full rounded-full bg-muted px-3 py-2 text-xs outline-none placeholder:text-foreground/40"
+                />
+              )}
+            </div>
+          ))}
         </div>
 
-        {today.blocks.length > 0 && (
+        {totalCount > 0 && (
           <div className="card-paper rounded-[24px] p-5">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">End of day · Planned vs Actual</div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">End of day</div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-3xl">{fmt(actualMin)}</span>
+              <span className="font-display text-3xl">{doneCount}</span>
               <span className="text-muted-foreground text-sm">of</span>
-              <span className="font-display text-3xl">{fmt(plannedMin)}</span>
-              <span className={`ml-auto text-sm font-medium ${actualMin >= plannedMin ? "text-foreground" : "text-muted-foreground"}`}>
-                {plannedMin === 0 ? "—" : `${Math.round((actualMin / plannedMin) * 100)}%`}
+              <span className="font-display text-3xl">{totalCount}</span>
+              <span className="text-muted-foreground text-sm">blocks completed</span>
+              <span className={`ml-auto text-sm font-medium ${doneCount === totalCount ? "text-foreground" : "text-muted-foreground"}`}>
+                {totalCount === 0 ? "—" : `${Math.round((doneCount / totalCount) * 100)}%`}
               </span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full bg-foreground transition-all duration-500"
-                style={{ width: `${Math.min(100, plannedMin === 0 ? 0 : (actualMin / plannedMin) * 100)}%` }}
+                style={{ width: `${totalCount === 0 ? 0 : (doneCount / totalCount) * 100}%` }}
               />
             </div>
           </div>
@@ -151,13 +146,4 @@ function PlannerPage() {
       </div>
     </AppShell>
   );
-}
-
-function diffMin(a: string, b: string) {
-  const [ah, am] = a.split(":").map(Number); const [bh, bm] = b.split(":").map(Number);
-  return Math.max(0, (bh*60+bm) - (ah*60+am));
-}
-
-function fmt(min: number) {
-  return `${Math.floor(min/60)}h ${min%60}m`;
 }
