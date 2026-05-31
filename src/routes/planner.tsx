@@ -45,7 +45,7 @@ function PlannerPage() {
         <div className="card-paper rounded-[24px] p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Available hours</div>
-            {perm !== "granted" && typeof Notification !== "undefined" && (
+            {mounted && perm !== "granted" && typeof Notification !== "undefined" && (
               <button
                 onClick={async () => { const p = await Notification.requestPermission(); setPerm(p); }}
                 className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition"
