@@ -130,31 +130,21 @@ function PlannerPage() {
         </div>
 
         {today.blocks.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="card-paper rounded-[24px] p-5">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Planned</div>
-              <div className="mt-2 font-display text-4xl">{Math.floor(plannedMin/60)}<span className="text-muted-foreground text-xl">h {plannedMin%60}m</span></div>
+          <div className="card-paper rounded-[24px] p-5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">End of day · Planned vs Actual</div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-3xl">{fmt(actualMin)}</span>
+              <span className="text-muted-foreground text-sm">of</span>
+              <span className="font-display text-3xl">{fmt(plannedMin)}</span>
+              <span className={`ml-auto text-sm font-medium ${actualMin >= plannedMin ? "text-foreground" : "text-muted-foreground"}`}>
+                {plannedMin === 0 ? "—" : `${Math.round((actualMin / plannedMin) * 100)}%`}
+              </span>
             </div>
-            <div className="card-mint rounded-[24px] p-5">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Actual</div>
-              <div className="mt-2 font-display text-4xl">{Math.floor(actualMin/60)}<span className="text-muted-foreground text-xl">h {actualMin%60}m</span></div>
-            </div>
-            <div className="col-span-2 card-paper rounded-[24px] p-5">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">End of day · Planned vs Actual</div>
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-3xl">{fmt(actualMin)}</span>
-                <span className="text-muted-foreground text-sm">of</span>
-                <span className="font-display text-3xl">{fmt(plannedMin)}</span>
-                <span className={`ml-auto text-sm font-medium ${actualMin >= plannedMin ? "text-foreground" : "text-muted-foreground"}`}>
-                  {plannedMin === 0 ? "—" : `${Math.round((actualMin / plannedMin) * 100)}%`}
-                </span>
-              </div>
-              <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-foreground transition-all duration-500"
-                  style={{ width: `${Math.min(100, plannedMin === 0 ? 0 : (actualMin / plannedMin) * 100)}%` }}
-                />
-              </div>
+            <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-foreground transition-all duration-500"
+                style={{ width: `${Math.min(100, plannedMin === 0 ? 0 : (actualMin / plannedMin) * 100)}%` }}
+              />
             </div>
           </div>
         )}
