@@ -32,52 +32,60 @@ function HistoryPage() {
   }, [habits, days]);
 
   const allKeys = Object.keys(days).sort().reverse();
-  const ink = "oklch(0.16 0.005 60)";
+  const ink = "currentColor";
+  const gridStroke = "color-mix(in oklab, currentColor 18%, transparent)";
 
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
         <Section title="Habits" subtitle="% completed per day" accent="card-mint">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
-              <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 100]} label={{ value: "% done", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
-              <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11, color: ink }} />
-              <Bar dataKey="habits" name="Habits %" radius={[6, 6, 0, 0]} fill={ink}>
-                <LabelList dataKey="habits" position="top" fontSize={9} fill={ink} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="text-foreground">
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
+                <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 100]} label={{ value: "% done", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
+                <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11, color: ink }} />
+                <Bar dataKey="habits" name="Habits %" radius={[6, 6, 0, 0]} fill={ink}>
+                  <LabelList dataKey="habits" position="top" fontSize={9} fill={ink} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Section>
 
         <Section title="Study" subtitle="hours per day" accent="card-lavender">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
-              <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} label={{ value: "Hours", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
-              <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11, color: ink }} />
-              <Bar dataKey="study" name="Study hours" radius={[6, 6, 0, 0]} fill={ink}>
-                <LabelList dataKey="study" position="top" fontSize={9} fill={ink} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="text-foreground">
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 20, right: 12, left: 4, bottom: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
+                <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} label={{ value: "Hours", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
+                <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: 11, color: ink }} />
+                <Bar dataKey="study" name="Study hours" radius={[6, 6, 0, 0]} fill={ink}>
+                  <LabelList dataKey="study" position="top" fontSize={9} fill={ink} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Section>
 
         <Section title="Energy" subtitle="1–5 scale" accent="card-peach">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chartData} margin={{ top: 20, right: 16, left: 4, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
-              <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 5]} ticks={[0,1,2,3,4,5]} label={{ value: "Energy", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
-              <Legend verticalAlign="top" height={24} iconType="line" wrapperStyle={{ fontSize: 11, color: ink }} />
-              <Line type="monotone" dataKey="energy" name="Energy (1–5)" stroke={ink} strokeWidth={2.5} dot={{ r: 3, fill: ink }}>
-                <LabelList dataKey="energy" position="top" fontSize={9} fill={ink} />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="text-foreground">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData} margin={{ top: 20, right: 16, left: 4, bottom: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} interval={1} label={{ value: "Date", position: "insideBottom", offset: -12, fontSize: 11, fill: ink }} />
+                <YAxis tick={{ fill: ink, fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 5]} ticks={[0,1,2,3,4,5]} label={{ value: "Energy", angle: -90, position: "insideLeft", fontSize: 11, fill: ink }} />
+                <Legend verticalAlign="top" height={24} iconType="line" wrapperStyle={{ fontSize: 11, color: ink }} />
+                <Line type="monotone" dataKey="energy" name="Energy (1–5)" stroke={ink} strokeWidth={2.5} dot={{ r: 3, fill: ink }}>
+                  <LabelList dataKey="energy" position="top" fontSize={9} fill={ink} />
+                </Line>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </Section>
+
 
 
 
