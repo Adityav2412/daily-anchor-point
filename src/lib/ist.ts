@@ -7,8 +7,6 @@ export function nowIST(): Date {
 }
 
 export function istDateKey(d: Date = nowIST()): string {
-  // d is already an IST-shifted Date when from nowIST()
-  const y = d.getUTCFullYear ? d.getFullYear() : d.getFullYear();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
