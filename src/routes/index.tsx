@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useStore, useToday } from "@/lib/store";
-import { istDateKey, lastNDays, formatISTDate, nowIST } from "@/lib/ist";
+import { actions, useStore, useToday, studyMinutesFor } from "@/lib/store";
+import { istDateKey, lastNDays, formatISTDate, nowIST, istGreeting } from "@/lib/ist";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "Today — daily." }] }),
@@ -18,12 +18,8 @@ function TodayPage() {
   const [winDraft, setWinDraft] = useState(today.study.win ?? "");
   const [reflectDraft, setReflectDraft] = useState(today.study.reflection ?? "");
   const [energyOpen, setEnergyOpen] = useState(false);
-
-  // Morning intention drafts
-  const [iGoal, setIGoal] = useState("");
-  const [iEnergy, setIEnergy] = useState(0);
-  const [iHabit, setIHabit] = useState<string | undefined>(undefined);
-  const intentionSet = !!today.intention;
+  const [greeting, setGreeting] = useState("");
+  useEffect(() => { setGreeting(istGreeting("Akshay")); }, []);
 
   // Tough day
   const [toughOpen, setToughOpen] = useState(false);
@@ -42,7 +38,7 @@ function TodayPage() {
 
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
   const habitPct = habits.length ? Math.round((habitDone / habits.length) * 100) : 0;
-  const studyMin = today.study.entries.reduce((a, e) => a + e.minutes, 0);
+  const studyMin = studyMinutesFor(today);
   const loggedCount = Object.keys(allDays).length;
   const taskDone = today.tasksToday.filter((t) => t.done).length;
   const highOpen = today.tasksToday.filter((t) => t.priority === "high" && !t.done).length;
@@ -50,54 +46,10 @@ function TodayPage() {
   return (
     <AppShell title="Today">
       <div className="space-y-4 stagger">
-        {/* Morning Intention */}
-        {!intentionSet ? (
-          <div className="card-butter rounded-[24px] p-5">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Good morning, Akshay</div>
-            <p className="font-display text-xl tracking-tight mb-3">Set your intention<span className="italic font-light text-muted-foreground">.</span></p>
-            <input
-              value={iGoal}
-              onChange={(e) => setIGoal(e.target.value)}
-              placeholder="One study goal for today"
-              className="w-full rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none mb-2 placeholder:text-foreground/40"
-            />
-            <div className="flex gap-1.5 mb-2">
-              {[1,2,3,4,5].map((n) => (
-                <button key={n} onClick={() => setIEnergy(n)}
-                  className={`flex-1 rounded-full py-2 font-display text-base press transition ${iEnergy === n ? "bg-foreground text-background" : "bg-background/70"}`}>{n}</button>
-              ))}
-            </div>
-            <div className="text-[11px] text-foreground/55 mb-2 px-1">Energy expectation today</div>
-            {habits.length > 0 && (
-              <select
-                value={iHabit ?? ""}
-                onChange={(e) => setIHabit(e.target.value || undefined)}
-                className="w-full rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none mb-3"
-              >
-                <option value="">Pick one priority habit…</option>
-                {habits.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </select>
-            )}
-            <button
-              onClick={() => {
-                if (!iGoal.trim() || !iEnergy) return;
-                actions.setIntention({ goal: iGoal.trim(), energy: iEnergy, habitId: iHabit });
-              }}
-              disabled={!iGoal.trim() || !iEnergy}
-              className="w-full rounded-full bg-foreground text-background py-2.5 text-sm press disabled:opacity-40"
-            >Save intention</button>
-          </div>
-        ) : (
-          <div className="card-butter rounded-[24px] p-4 flex items-start gap-3">
-            <span className="text-xl">🌅</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Today's intention</div>
-              <p className="font-display text-base tracking-tight truncate">{today.intention!.goal}</p>
-              <p className="text-[11px] text-foreground/55">Energy {today.intention!.energy}/5{today.intention!.habitId && habits.find((h) => h.id === today.intention!.habitId) ? ` · focus: ${habits.find((h) => h.id === today.intention!.habitId)!.name}` : ""}</p>
-            </div>
-            <button onClick={() => actions.clearIntention()} className="text-[11px] text-foreground/40 underline">Edit</button>
-          </div>
-        )}
+        {/* Greeting */}
+        <div suppressHydrationWarning className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-medium px-1">
+          {greeting || "\u00a0"}
+        </div>
 
         {/* Days logged — Napa banner */}
         <div className="card-sky rounded-[28px] p-5">
@@ -114,7 +66,7 @@ function TodayPage() {
             {days.map((k) => {
               const d = allDays[k];
               const isToday = k === todayKey;
-              const any = !!d && (Object.keys(d.habits).length || d.study.entries.length || d.tasksToday.length);
+              const any = !!d && (Object.keys(d.habits).length || (d.study.sessions?.length ?? 0) || d.study.entries.length || d.tasksToday.length);
               return (
                 <div key={k} className="flex-1 flex flex-col items-center gap-1.5">
                   <div className="text-[10px] text-foreground/55 font-medium tabular-nums">{formatISTDate(k)}</div>
@@ -249,7 +201,7 @@ function TodayPage() {
         {!toughLogged ? (
           !toughOpen ? (
             <button onClick={() => setToughOpen(true)} className="block w-full text-center text-[12px] text-muted-foreground/80 underline underline-offset-2 py-1 hover:text-foreground transition">
-              Tough day?
+              Bad day?
             </button>
           ) : (
             <div className="card-paper rounded-[24px] p-5 animate-fade-up">
@@ -275,7 +227,7 @@ function TodayPage() {
         {/* Night setup */}
         {isEvening && !nightDone && (
           <div className="card-lavender rounded-[24px] p-5">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Wind down, Akshay</div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Wind down</div>
             <p className="font-display text-xl tracking-tight mb-3">Plan tomorrow in 2 minutes<span className="italic font-light text-muted-foreground">.</span></p>
             <div className="space-y-2 mb-3">
               <input value={nTask1} onChange={(e) => setNTask1(e.target.value)} placeholder="Tomorrow's task 1" className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none placeholder:text-foreground/40" />
@@ -285,7 +237,7 @@ function TodayPage() {
             <textarea
               value={nPlan} onChange={(e) => setNPlan(e.target.value)}
               rows={2}
-              placeholder="What to study tomorrow?"
+              placeholder="What to study tomorrow? (carries to Study tab)"
               className="w-full rounded-2xl bg-background/70 p-3 text-sm outline-none resize-none placeholder:text-foreground/40 mb-2"
             />
             <div className="flex items-center gap-2 mb-3">
