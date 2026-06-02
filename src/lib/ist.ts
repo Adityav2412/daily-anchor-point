@@ -43,3 +43,32 @@ export function lastNDays(n: number): string[] {
   }
   return out;
 }
+
+export function istYesterdayKey(): string {
+  const d = nowIST();
+  d.setDate(d.getDate() - 1);
+  return istDateKey(d);
+}
+
+export function istGreeting(name = "Akshay"): string {
+  const h = nowIST().getHours();
+  if (h >= 5 && h < 12) return `Good morning, ${name}`;
+  if (h >= 12 && h < 17) return `Good afternoon, ${name}`;
+  if (h >= 17 && h < 22) return `Good evening, ${name}`;
+  return `Good night, ${name}`;
+}
+
+export function formatHM(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+export function formatClock(iso: string): string {
+  const d = new Date(iso);
+  // convert to IST
+  const ist = new Date(d.getTime() + (d.getTimezoneOffset() + IST_OFFSET_MIN) * 60000);
+  return `${String(ist.getHours()).padStart(2, "0")}:${String(ist.getMinutes()).padStart(2, "0")}`;
+}
