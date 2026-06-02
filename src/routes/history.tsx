@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStore } from "@/lib/store";
-import { formatISTDate } from "@/lib/ist";
+import { formatISTDate, lastNDays, nowIST } from "@/lib/ist";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),
@@ -14,13 +14,25 @@ const ENERGY_EMOJI = ["·", "😴", "🙁", "😐", "🙂", "🔥"];
 function HistoryPage() {
   const habits = useStore((s) => s.habits);
   const days = useStore((s) => s.days);
-  const startKey = useStore((s) => s.dataStartKey);
   const [selected, setSelected] = useState<string | null>(null);
 
+  // Include every day that has any data — historical study sessions surface here too.
   const visibleKeys = useMemo(() => {
-    if (!startKey) return [];
-    return Object.keys(days).filter((k) => k >= startKey).sort();
-  }, [days, startKey]);
+    return Object.keys(days)
+      .filter((k) => {
+        const d = days[k];
+        if (!d) return false;
+        return (
+          Object.keys(d.habits).length > 0 ||
+          d.study.entries.length > 0 ||
+          d.tasksToday.length > 0 ||
+          !!d.study.win ||
+          !!d.study.reflection ||
+          (d.timeLog?.length ?? 0) > 0
+        );
+      })
+      .sort();
+  }, [days]);
 
   const rows = useMemo(() => {
     const total = habits.length || 1;
@@ -42,15 +54,68 @@ function HistoryPage() {
   }, [habits, days, visibleKeys]);
 
   const maxStudy = Math.max(0.01, ...rows.map((r) => r.study));
-
   const empty = rows.length === 0;
+
+  // Weekly report — only on Sunday IST
+  const ist = nowIST();
+  const isSunday = ist.getDay() === 0;
+  const weekKeys = lastNDays(7);
+  const weekRollup = useMemo(() => {
+    let studyMin = 0;
+    let habitDoneSum = 0;
+    let habitTotalSum = 0;
+    let energySum = 0;
+    let energyCount = 0;
+    let win: string | undefined;
+    for (const k of weekKeys) {
+      const d = days[k];
+      if (!d) continue;
+      studyMin += d.study.entries.reduce((a, e) => a + e.minutes, 0);
+      const total = habits.length;
+      if (total > 0) {
+        habitDoneSum += habits.filter((h) => d.habits[h.id]?.done).length;
+        habitTotalSum += total;
+      }
+      if (d.study.energy) { energySum += d.study.energy; energyCount += 1; }
+      if (d.study.win) win = d.study.win;
+    }
+    return {
+      hours: +(studyMin / 60).toFixed(1),
+      habitPct: habitTotalSum > 0 ? Math.round((habitDoneSum / habitTotalSum) * 100) : 0,
+      avgEnergy: energyCount > 0 ? +(energySum / energyCount).toFixed(1) : 0,
+      win,
+    };
+  }, [days, habits, weekKeys]);
 
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
+        {isSunday && (
+          <div className="card-butter rounded-[24px] p-5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-2">This week — gentle facts</div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <div className="font-display text-3xl leading-none">{weekRollup.hours}<span className="text-muted-foreground text-base">h</span></div>
+                <div className="text-[11px] text-foreground/60 mt-1">studied</div>
+              </div>
+              <div>
+                <div className="font-display text-3xl leading-none">{weekRollup.habitPct}<span className="text-muted-foreground text-base">%</span></div>
+                <div className="text-[11px] text-foreground/60 mt-1">habits</div>
+              </div>
+              <div>
+                <div className="font-display text-3xl leading-none">{weekRollup.avgEnergy || "—"}<span className="text-muted-foreground text-base">{weekRollup.avgEnergy ? "/5" : ""}</span></div>
+                <div className="text-[11px] text-foreground/60 mt-1">avg energy</div>
+              </div>
+            </div>
+            {weekRollup.win && (
+              <p className="mt-3 text-sm"><span className="text-[10px] uppercase tracking-wider text-foreground/55">This week's win — </span><span className="italic">{weekRollup.win}</span></p>
+            )}
+          </div>
+        )}
+
         {empty && (
           <div className="card-paper rounded-2xl p-5 text-center text-sm text-muted-foreground italic">
-            Stats will begin from {startKey ? formatISTDate(startKey) : "tomorrow"}.
+            Stats will appear here as you log days.
           </div>
         )}
 
@@ -148,7 +213,9 @@ function HistoryPage() {
                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2">Habits</p>
                           {habits.map((h) => {
                             const log = d.habits[h.id];
-                            return <p key={h.id} className="text-xs text-foreground/70">{log?.done ? "✓" : "○"} {h.name}{log && !log.done && log.reason ? ` — ${log.reason}` : ""}</p>;
+                            if (!log) return <p key={h.id} className="text-xs text-foreground/55">○ {h.name} <span className="italic text-foreground/40">— not logged</span></p>;
+                            if (log.done) return <p key={h.id} className="text-xs text-foreground/80">✓ {h.name}</p>;
+                            return <p key={h.id} className="text-xs text-foreground/70">— {h.name}{log.reason ? <span className="italic text-foreground/50"> ({log.reason})</span> : ""}</p>;
                           })}
                         </div>
                       )}
