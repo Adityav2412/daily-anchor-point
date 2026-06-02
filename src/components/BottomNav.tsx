@@ -5,7 +5,7 @@ const items = [
   { to: "/habits", label: "Habits", emoji: "🔁" },
   { to: "/study", label: "Study", emoji: "📚" },
   { to: "/tasks", label: "Tasks", emoji: "✓" },
-  { to: "/planner", label: "Plan", emoji: "⏱" },
+  { to: "/planner", label: "Time", emoji: "⏱" },
   { to: "/history", label: "Stats", emoji: "📈" },
 ] as const;
 
