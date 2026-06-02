@@ -1,229 +1,245 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { useStore } from "@/lib/store";
-import { formatISTDate, lastNDays, nowIST } from "@/lib/ist";
+import { useStore, studyMinutesFor } from "@/lib/store";
+import { formatISTDate, lastNDays, formatHM } from "@/lib/ist";
+import { Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),
   component: HistoryPage,
 });
 
-const ENERGY_EMOJI = ["·", "😴", "🙁", "😐", "🙂", "🔥"];
-
 function HistoryPage() {
   const habits = useStore((s) => s.habits);
   const days = useStore((s) => s.days);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [studyRange, setStudyRange] = useState<7 | 30>(7);
+  const [habitSel, setHabitSel] = useState<string | null>(null);
+  const [ttRange, setTtRange] = useState<7 | 30>(7);
 
-  // Include every day that has any data — historical study sessions surface here too.
-  const visibleKeys = useMemo(() => {
-    return Object.keys(days)
-      .filter((k) => {
-        const d = days[k];
-        if (!d) return false;
-        return (
-          Object.keys(d.habits).length > 0 ||
-          d.study.entries.length > 0 ||
-          d.tasksToday.length > 0 ||
-          !!d.study.win ||
-          !!d.study.reflection ||
-          (d.timeLog?.length ?? 0) > 0
-        );
-      })
-      .sort();
-  }, [days]);
+  const studyKeys = useMemo(() => lastNDays(studyRange), [studyRange]);
+  const habitKeys = useMemo(() => lastNDays(7), []);
+  const ttKeys = useMemo(() => lastNDays(ttRange), [ttRange]);
 
-  const rows = useMemo(() => {
+  const studyRows = useMemo(() => studyKeys.map((k) => {
+    const d = days[k];
+    const min = studyMinutesFor(d);
+    return { key: k, date: formatISTDate(k), hours: +(min / 60).toFixed(1), min };
+  }), [days, studyKeys]);
+  const maxStudy = Math.max(0.01, ...studyRows.map((r) => r.hours));
+
+  const habitRows = useMemo(() => habitKeys.map((k) => {
+    const d = days[k];
     const total = habits.length || 1;
-    return visibleKeys.map((k) => {
-      const d = days[k];
-      const done = habits.filter((h) => d?.habits[h.id]?.done).length;
-      const studyMin = d?.study.entries.reduce((a, e) => a + e.minutes, 0) ?? 0;
-      const hrs = +(studyMin / 60).toFixed(1);
-      return {
-        key: k,
-        date: formatISTDate(k),
-        habitsPct: Math.round((done / total) * 100),
-        habitsAll: total > 0 && done === total,
-        habitsAny: done > 0,
-        study: hrs,
-        energy: d?.study.energy ?? 0,
-      };
-    });
-  }, [habits, days, visibleKeys]);
+    const done = habits.filter((h) => d?.habits[h.id]?.done).length;
+    const skipped = habits.filter((h) => d?.habits[h.id] && !d.habits[h.id].done).map((h) => ({
+      name: h.name, reason: d!.habits[h.id].reason,
+    }));
+    const notLogged = habits.filter((h) => !d?.habits[h.id]).map((h) => h.name);
+    return { key: k, date: formatISTDate(k), done, total, pct: done / total, skipped, notLogged };
+  }), [days, habits, habitKeys]);
 
-  const maxStudy = Math.max(0.01, ...rows.map((r) => r.study));
-  const empty = rows.length === 0;
-
-  // Weekly report — only on Sunday IST
-  const ist = nowIST();
-  const isSunday = ist.getDay() === 0;
-  const weekKeys = lastNDays(7);
-  const weekRollup = useMemo(() => {
-    let studyMin = 0;
-    let habitDoneSum = 0;
-    let habitTotalSum = 0;
-    let energySum = 0;
-    let energyCount = 0;
-    let win: string | undefined;
-    for (const k of weekKeys) {
+  const ttAggregate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const k of ttKeys) {
       const d = days[k];
-      if (!d) continue;
-      studyMin += d.study.entries.reduce((a, e) => a + e.minutes, 0);
-      const total = habits.length;
-      if (total > 0) {
-        habitDoneSum += habits.filter((h) => d.habits[h.id]?.done).length;
-        habitTotalSum += total;
-      }
-      if (d.study.energy) { energySum += d.study.energy; energyCount += 1; }
-      if (d.study.win) win = d.study.win;
+      if (!d?.timeSessions) continue;
+      for (const s of d.timeSessions) map.set(s.category, (map.get(s.category) ?? 0) + s.durationMin);
     }
-    return {
-      hours: +(studyMin / 60).toFixed(1),
-      habitPct: habitTotalSum > 0 ? Math.round((habitDoneSum / habitTotalSum) * 100) : 0,
-      avgEnergy: energyCount > 0 ? +(energySum / energyCount).toFixed(1) : 0,
-      win,
-    };
-  }, [days, habits, weekKeys]);
+    return Array.from(map.entries()).map(([category, mins]) => ({ category, mins })).sort((a, b) => b.mins - a.mins);
+  }, [days, ttKeys]);
+  const ttMax = Math.max(1, ...ttAggregate.map((a) => a.mins));
+
+  // AI Insights
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const runInsights = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        setAiError("Add VITE_GEMINI_API_KEY in your build secrets to enable insights.");
+        setAiLoading(false);
+        return;
+      }
+      const last7 = lastNDays(7);
+      const summary = last7.map((k) => {
+        const d = days[k];
+        if (!d) return { date: k, empty: true };
+        const sessions = (d.study.sessions ?? []).map((s) => ({ subject: s.subject, start: s.startISO, end: s.endISO, min: s.durationMin }));
+        const habitsDone = habits.filter((h) => d.habits[h.id]?.done).map((h) => h.name);
+        const habitsSkipped = habits.filter((h) => d.habits[h.id] && !d.habits[h.id].done).map((h) => ({ name: h.name, reason: d.habits[h.id].reason }));
+        const time = (d.timeSessions ?? []).map((s) => ({ cat: s.category, min: s.durationMin }));
+        return {
+          date: k,
+          energy: d.study.energy,
+          studyMinutes: studyMinutesFor(d),
+          sessions,
+          habitsDone,
+          habitsSkipped,
+          time,
+          win: d.study.win,
+          toughDay: !!d.toughDay,
+        };
+      });
+
+      const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English mixed language. Be encouraging, never shame. Data: ${JSON.stringify(summary)}`;
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
+      }
+      const json = await res.json();
+      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "No insights returned.";
+      setAiResult(text);
+    } catch (e: any) {
+      setAiError(e?.message ?? "Something went wrong. Try again later.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
-        {isSunday && (
-          <div className="card-butter rounded-[24px] p-5">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-2">This week — gentle facts</div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <div className="font-display text-3xl leading-none">{weekRollup.hours}<span className="text-muted-foreground text-base">h</span></div>
-                <div className="text-[11px] text-foreground/60 mt-1">studied</div>
-              </div>
-              <div>
-                <div className="font-display text-3xl leading-none">{weekRollup.habitPct}<span className="text-muted-foreground text-base">%</span></div>
-                <div className="text-[11px] text-foreground/60 mt-1">habits</div>
-              </div>
-              <div>
-                <div className="font-display text-3xl leading-none">{weekRollup.avgEnergy || "—"}<span className="text-muted-foreground text-base">{weekRollup.avgEnergy ? "/5" : ""}</span></div>
-                <div className="text-[11px] text-foreground/60 mt-1">avg energy</div>
-              </div>
-            </div>
-            {weekRollup.win && (
-              <p className="mt-3 text-sm"><span className="text-[10px] uppercase tracking-wider text-foreground/55">This week's win — </span><span className="italic">{weekRollup.win}</span></p>
-            )}
-          </div>
-        )}
 
-        {empty && (
-          <div className="card-paper rounded-2xl p-5 text-center text-sm text-muted-foreground italic">
-            Stats will appear here as you log days.
-          </div>
-        )}
-
-        <Section title="Habits" accent="card-mint">
-          {empty ? <EmptyDots /> : (
-            <div className="flex flex-wrap gap-2">
-              {rows.map((r) => (
-                <div key={r.key} className="flex flex-col items-center gap-1.5">
-                  <span
-                    className="w-7 h-7 rounded-md"
-                    style={{ background: r.habitsAll ? "var(--success)" : r.habitsAny ? "color-mix(in oklab, var(--success) 45%, var(--muted))" : "color-mix(in oklab, currentColor 18%, transparent)" }}
-                    aria-label={`${r.date}: ${r.habitsPct}%`}
-                  />
-                  <span className="text-[9px] text-muted-foreground tabular-nums">{r.date}</span>
-                </div>
+        {/* Habits donut row */}
+        <section>
+          <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
+            <h2 className="font-display text-2xl tracking-tight">Habits</h2>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">last 7</span>
+          </header>
+          <div className="card-mint rounded-[24px] p-5">
+            <div className="grid grid-cols-7 gap-2">
+              {habitRows.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => setHabitSel(habitSel === r.key ? null : r.key)}
+                  className="flex flex-col items-center gap-1.5 press"
+                >
+                  <Donut pct={r.pct} active={habitSel === r.key} />
+                  <span className="text-[9px] text-foreground/60 tabular-nums">{r.date}</span>
+                </button>
               ))}
             </div>
-          )}
-        </Section>
+            {habitSel && (() => {
+              const r = habitRows.find((x) => x.key === habitSel)!;
+              return (
+                <div className="mt-4 pt-3 border-t border-foreground/10 animate-fade-up text-sm">
+                  <p className="font-display text-base">{r.date} — {r.done}/{r.total}</p>
+                  {r.skipped.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-[10px] uppercase tracking-wider text-foreground/55 mb-1">Skipped</p>
+                      {r.skipped.map((s, i) => (
+                        <p key={i} className="text-xs text-foreground/75">— {s.name}{s.reason ? <span className="italic text-foreground/50"> ({s.reason})</span> : ""}</p>
+                      ))}
+                    </div>
+                  )}
+                  {r.notLogged.length > 0 && (
+                    <p className="text-[11px] text-foreground/50 italic mt-2">Not logged: {r.notLogged.join(", ")}</p>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </section>
 
-        <Section title="Study" accent="card-lavender">
-          {empty ? <EmptyDots /> : (
-            <div className="grid grid-cols-7 gap-3">
-              {rows.map((r) => {
-                const scale = 0.6 + (r.study / maxStudy) * 0.9;
+        {/* Study chart */}
+        <section>
+          <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
+            <h2 className="font-display text-2xl tracking-tight">Study</h2>
+            <div className="flex gap-1 bg-foreground/5 rounded-full p-1">
+              <button onClick={() => setStudyRange(7)} className={`px-3 py-1 rounded-full text-xs press transition ${studyRange === 7 ? "bg-foreground text-background" : ""}`}>7d</button>
+              <button onClick={() => setStudyRange(30)} className={`px-3 py-1 rounded-full text-xs press transition ${studyRange === 30 ? "bg-foreground text-background" : ""}`}>30d</button>
+            </div>
+          </header>
+          <div className="card-lavender rounded-[24px] p-5">
+            <div className="flex items-end gap-1" style={{ height: 120 }}>
+              {studyRows.map((r) => {
+                const h = (r.hours / maxStudy) * 100;
                 return (
-                  <div key={r.key} className="flex flex-col items-center gap-1">
-                    <span
-                      className="font-display tabular-nums leading-none text-foreground"
-                      style={{ fontSize: `${scale}rem`, opacity: r.study === 0 ? 0.3 : 1 }}
-                    >
-                      {r.study}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground tabular-nums">{r.date}</span>
+                  <div key={r.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                    <div className="w-full flex items-end justify-center" style={{ height: 100 }}>
+                      <div
+                        className="w-full max-w-[14px] bg-foreground rounded-t transition-all duration-700"
+                        style={{ height: `${Math.max(2, h)}%`, opacity: r.hours === 0 ? 0.2 : 1 }}
+                        title={`${r.date}: ${r.hours}h`}
+                      />
+                    </div>
+                    {studyRange === 7 && (
+                      <span className="text-[8px] text-foreground/55 tabular-nums truncate">{r.date}</span>
+                    )}
                   </div>
                 );
               })}
             </div>
-          )}
-        </Section>
+            <p className="text-[11px] text-foreground/60 mt-3">
+              Total: <span className="font-display text-foreground text-sm">{formatHM(studyRows.reduce((a, r) => a + r.min, 0))}</span>
+            </p>
+          </div>
+        </section>
 
-        <Section title="Energy" accent="card-peach">
-          {empty ? <EmptyDots /> : (
-            <div className="flex flex-wrap gap-3">
-              {rows.map((r) => (
-                <div key={r.key} className="flex flex-col items-center gap-1">
-                  <span className="text-xl leading-none" style={{ opacity: r.energy === 0 ? 0.3 : 1 }}>
-                    {ENERGY_EMOJI[r.energy] ?? "·"}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground tabular-nums">{r.date}</span>
+        {/* Time Tracker summary */}
+        <section>
+          <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
+            <h2 className="font-display text-2xl tracking-tight">Time</h2>
+            <div className="flex gap-1 bg-foreground/5 rounded-full p-1">
+              <button onClick={() => setTtRange(7)} className={`px-3 py-1 rounded-full text-xs press transition ${ttRange === 7 ? "bg-foreground text-background" : ""}`}>7d</button>
+              <button onClick={() => setTtRange(30)} className={`px-3 py-1 rounded-full text-xs press transition ${ttRange === 30 ? "bg-foreground text-background" : ""}`}>30d</button>
+            </div>
+          </header>
+          {ttAggregate.length === 0 ? (
+            <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">No time tracked yet.</div>
+          ) : (
+            <div className="card-butter rounded-[24px] p-5 space-y-3">
+              {ttAggregate.slice(0, 6).map((a) => (
+                <div key={a.category}>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-sm font-medium">{a.category}</span>
+                    <span className="text-xs tabular-nums text-foreground/65">{formatHM(a.mins)}</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-background/60 overflow-hidden">
+                    <div className="h-full bg-foreground transition-all duration-700" style={{ width: `${(a.mins / ttMax) * 100}%` }} />
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </Section>
+        </section>
 
+        {/* AI Insights */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-display text-2xl tracking-tight">Daily log</h2>
-              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">archive</span>
-            </div>
-            <span suppressHydrationWarning className="text-xs text-muted-foreground tabular-nums bg-foreground/5 px-2.5 py-1 rounded-full">{visibleKeys.length}</span>
+            <h2 className="font-display text-2xl tracking-tight">AI insights</h2>
           </header>
-          <div className="space-y-2 stagger">
-            {visibleKeys.length === 0 && <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing logged yet.</div>}
-            {[...visibleKeys].reverse().map((k) => {
-              const d = days[k];
-              const done = habits.filter((h) => d.habits[h.id]?.done).length;
-              const sm = d.study.entries.reduce((a, e) => a + e.minutes, 0);
-              const isSel = selected === k;
-              return (
-                <button
-                  key={k}
-                  onClick={() => setSelected(isSel ? null : k)}
-                  className={`w-full text-left rounded-2xl p-4 press transition ${isSel ? "card-butter" : "card-paper"}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-display text-sm w-20">{formatISTDate(k)}</span>
-                    <span className="text-xs text-muted-foreground flex-1">{done}/{habits.length} habits · {Math.floor(sm/60)}h {sm%60}m</span>
-                    {d.study.win && <span className="text-base">✨</span>}
-                  </div>
-                  {isSel && (
-                    <div className="mt-3 pt-3 border-t border-foreground/10 animate-fade-up space-y-2">
-                      {d.study.win && <p className="text-sm"><span className="font-display text-xs uppercase tracking-wider text-muted-foreground">Win — </span>{d.study.win}</p>}
-                      {d.study.reflection && <p className="text-sm italic text-muted-foreground">"{d.study.reflection}"</p>}
-                      {d.study.entries.length > 0 && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2">Study</p>
-                          {d.study.entries.map((e, i) => <p key={i} className="text-xs text-foreground/70">· {e.subject} — {Math.floor(e.minutes/60)}h {e.minutes%60}m</p>)}
-                        </div>
-                      )}
-                      {habits.length > 0 && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2">Habits</p>
-                          {habits.map((h) => {
-                            const log = d.habits[h.id];
-                            if (!log) return <p key={h.id} className="text-xs text-foreground/55">○ {h.name} <span className="italic text-foreground/40">— not logged</span></p>;
-                            if (log.done) return <p key={h.id} className="text-xs text-foreground/80">✓ {h.name}</p>;
-                            return <p key={h.id} className="text-xs text-foreground/70">— {h.name}{log.reason ? <span className="italic text-foreground/50"> ({log.reason})</span> : ""}</p>;
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+          <div className="card-sky rounded-[24px] p-5">
+            <p className="text-sm text-foreground/70 mb-3">Akshay's weekly analysis — sent privately to Gemini.</p>
+            <button
+              onClick={runInsights}
+              disabled={aiLoading}
+              className="w-full rounded-full bg-foreground text-background py-2.5 text-sm press flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Sparkles size={14} />
+              {aiLoading ? "Thinking…" : "Get this week's insights"}
+            </button>
+            {aiError && <p className="mt-3 text-xs text-foreground/65 italic">{aiError}</p>}
+            {aiResult && (
+              <div className="mt-4 bg-background/70 rounded-2xl p-4 text-sm whitespace-pre-wrap leading-relaxed animate-fade-up">
+                {aiResult}
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -231,19 +247,21 @@ function HistoryPage() {
   );
 }
 
-function EmptyDots() {
+function Donut({ pct, active }: { pct: number; active: boolean }) {
+  const size = 36;
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = c * Math.min(1, Math.max(0, pct));
   return (
-    <div className="text-center text-xs text-muted-foreground italic py-2">No data yet.</div>
-  );
-}
-
-function Section({ title, accent, children }: { title: string; accent: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
-        <h2 className="font-display text-2xl tracking-tight">{title}</h2>
-      </header>
-      <div className={`rounded-[24px] p-4 ${accent}`}>{children}</div>
-    </section>
+    <svg width={size} height={size} className={active ? "ring-2 ring-foreground/40 rounded-full" : ""}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={stroke} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="currentColor" strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={`${dash} ${c}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
   );
 }
