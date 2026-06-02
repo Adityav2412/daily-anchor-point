@@ -1,16 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useToday } from "@/lib/store";
-import { Plus, X } from "lucide-react";
+import { actions, useStore, useToday, yesterdayKey } from "@/lib/store";
+import { Pause, Play, Plus, RotateCcw, X } from "lucide-react";
 
 export const Route = createFileRoute("/study")({
   head: () => ({ meta: [{ title: "Study — daily." }] }),
   component: StudyPage,
 });
 
+const POMO_SECONDS = 25 * 60;
+
 function StudyPage() {
   const today = useToday();
+  const yKey = yesterdayKey();
+  const yPlan = useStore((s) => s.days[yKey]?.study.tomorrowPlan ?? "");
+  const [dismissCarry, setDismissCarry] = useState(false);
+  const showCarry = !dismissCarry && yPlan.trim().length > 0;
+
   const [subject, setSubject] = useState("");
   const [hh, setHh] = useState("");
   const [mm, setMm] = useState("");
@@ -18,9 +25,61 @@ function StudyPage() {
   const [plan, setPlan] = useState(today.study.tomorrowPlan ?? "");
   const totalMin = today.study.entries.reduce((a, e) => a + e.minutes, 0);
 
+  // Pomodoro
+  const [secs, setSecs] = useState(POMO_SECONDS);
+  const [running, setRunning] = useState(false);
+  const intRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!running) return;
+    intRef.current = setInterval(() => {
+      setSecs((s) => {
+        if (s <= 1) {
+          setRunning(false);
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try { new Notification("Take a 5 min break.", { body: "Gentle pause. You earned it." }); } catch {}
+          }
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => { if (intRef.current) clearInterval(intRef.current); };
+  }, [running]);
+  const mmStr = String(Math.floor(secs / 60)).padStart(2, "0");
+  const ssStr = String(secs % 60).padStart(2, "0");
+
   return (
     <AppShell title="Study">
       <div className="space-y-4 stagger">
+        {/* Carry-forward plan */}
+        {showCarry && (
+          <div className="card-mint rounded-[24px] p-5 animate-fade-up">
+            <div className="flex items-baseline justify-between mb-2">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Today's plan</div>
+              <button onClick={() => setDismissCarry(true)} className="text-[11px] text-foreground/50 underline">Done</button>
+            </div>
+            <p className="font-display text-lg tracking-tight">{yPlan}</p>
+            <p className="text-[11px] text-foreground/55 italic mt-1">From yesterday's note to future-you.</p>
+          </div>
+        )}
+
+        {/* Pomodoro */}
+        <div className="card-lavender rounded-[24px] p-5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-3">Focus timer · 25 min</div>
+          <div className="flex items-center justify-between">
+            <div className="font-display text-5xl tabular-nums leading-none">{mmStr}:{ssStr}</div>
+            <div className="flex gap-2">
+              {!running ? (
+                <button onClick={() => { if (secs === 0) setSecs(POMO_SECONDS); setRunning(true); if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission(); }} className="h-11 w-11 rounded-full bg-foreground text-background flex items-center justify-center press"><Play size={16} /></button>
+              ) : (
+                <button onClick={() => setRunning(false)} className="h-11 w-11 rounded-full bg-foreground text-background flex items-center justify-center press"><Pause size={16} /></button>
+              )}
+              <button onClick={() => { setRunning(false); setSecs(POMO_SECONDS); }} className="h-11 w-11 rounded-full bg-background/70 flex items-center justify-center press"><RotateCcw size={16} /></button>
+            </div>
+          </div>
+          {secs === 0 && <p className="text-xs text-foreground/65 italic mt-3">Take a 5 min break.</p>}
+        </div>
+
         {/* Studied today */}
         <div className="card-paper rounded-[24px] p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Studied today?</div>
