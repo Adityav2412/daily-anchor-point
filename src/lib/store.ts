@@ -7,11 +7,14 @@ export interface HabitLog { done: boolean; reason?: string; }
 export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; }
 export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
 export interface StudyEntry { subject: string; minutes: number; }
+export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
 export interface TimeLogEntry { id: string; activity: string; start: string; end: string; }
+export interface TimeSession { id: string; category: string; startISO: string; endISO: string; durationMin: number; }
 export interface Intention { goal: string; energy: number; habitId?: string; setAt: string; }
 export interface ToughDay { note?: string; at: string; }
 export interface NightSetup { sleepIntention?: string; at: string; }
+export interface PlanStatus { done: boolean; reason?: string; }
 
 export interface DayData {
   habits: Record<string, HabitLog>;
@@ -19,16 +22,19 @@ export interface DayData {
     studiedToday?: boolean;
     notStudiedReason?: string;
     entries: StudyEntry[];
+    sessions: StudySession[];
     tomorrowPlan: string;
     energy?: number;
     win?: string;
     reflection?: string;
+    planStatus?: PlanStatus; // status of yesterday's plan carried forward
   };
   tasksToday: TaskItem[];
   tasksTomorrow: TaskItem[];
   availableHours?: number;
   blocks: TimeBlock[];
   timeLog: TimeLogEntry[];
+  timeSessions: TimeSession[];
   intention?: Intention;
   toughDay?: ToughDay;
   nightSetup?: NightSetup;
@@ -41,12 +47,13 @@ export interface State {
   settings?: Settings;
   eodNotifiedKey?: string;
   dataStartKey?: string;
+  customCategories?: string[];
 }
 
 const KEY = "focusflow_state_v1";
 
 function emptyDay(): DayData {
-  return { habits: {}, study: { entries: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [], timeLog: [] };
+  return { habits: {}, study: { entries: [], sessions: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [], timeLog: [], timeSessions: [] };
 }
 
 const EMPTY_DAY = emptyDay();
@@ -58,11 +65,12 @@ function backfillDay(d: Partial<DayData> | undefined): DayData {
     ...base,
     ...d,
     habits: d.habits ?? {},
-    study: { entries: [], tomorrowPlan: "", ...(d.study ?? {}) },
+    study: { entries: [], sessions: [], tomorrowPlan: "", ...(d.study ?? {}), sessions: d.study?.sessions ?? [], entries: d.study?.entries ?? [] },
     tasksToday: d.tasksToday ?? [],
     tasksTomorrow: d.tasksTomorrow ?? [],
     blocks: d.blocks ?? [],
     timeLog: d.timeLog ?? [],
+    timeSessions: d.timeSessions ?? [],
   };
 }
 
@@ -80,14 +88,11 @@ function load(): State {
     ],
     days: {},
   };
-  // backfill all days so new fields are present
   const fixed: Record<string, DayData> = {};
   for (const k of Object.keys(base.days || {})) fixed[k] = backfillDay(base.days[k]);
   base.days = fixed;
-  // Always include today and past data from day 1.
-  if (!base.dataStartKey) {
-    base.dataStartKey = istDateKey();
-  }
+  if (!base.dataStartKey) base.dataStartKey = istDateKey();
+  if (!base.customCategories) base.customCategories = [];
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
@@ -140,8 +145,7 @@ export function useToday() {
 }
 
 export function yesterdayKey(): string {
-  const days = lastNDays(2);
-  return days[0];
+  return lastNDays(2)[0];
 }
 
 export const actions = {
@@ -178,6 +182,49 @@ export const actions = {
   removeStudyEntry(idx: number) {
     const key = istDateKey();
     store.set((s) => { s.days[key].study.entries.splice(idx, 1); return s; });
+  },
+  addStudySession(sess: Omit<StudySession, "id">) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      if (!s.days[key].study.sessions) s.days[key].study.sessions = [];
+      s.days[key].study.sessions.push({ ...sess, id: crypto.randomUUID() });
+      s.days[key].study.studiedToday = true;
+      return s;
+    });
+  },
+  removeStudySession(id: string) {
+    const key = istDateKey();
+    store.set((s) => { s.days[key].study.sessions = (s.days[key].study.sessions ?? []).filter((x) => x.id !== id); return s; });
+  },
+  setPlanStatus(status: PlanStatus | undefined) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      s.days[key].study.planStatus = status;
+      return s;
+    });
+  },
+  addTimeSession(sess: Omit<TimeSession, "id">) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      if (!s.days[key].timeSessions) s.days[key].timeSessions = [];
+      s.days[key].timeSessions.push({ ...sess, id: crypto.randomUUID() });
+      return s;
+    });
+  },
+  removeTimeSession(id: string) {
+    const key = istDateKey();
+    store.set((s) => { s.days[key].timeSessions = (s.days[key].timeSessions ?? []).filter((x) => x.id !== id); return s; });
+  },
+  addCustomCategory(name: string) {
+    store.set((s) => {
+      if (!s.customCategories) s.customCategories = [];
+      const n = name.trim();
+      if (n && !s.customCategories.includes(n)) s.customCategories.push(n);
+      return s;
+    });
   },
   addTask(scope: "today" | "tomorrow", title: string, priority: "normal" | "high") {
     const key = istDateKey();
@@ -335,13 +382,19 @@ function checkReminders() {
   }
 }
 
+export function studyMinutesFor(d: DayData | undefined): number {
+  if (!d) return 0;
+  const sess = (d.study.sessions ?? []).reduce((a, e) => a + e.durationMin, 0);
+  const entries = (d.study.entries ?? []).reduce((a, e) => a + e.minutes, 0);
+  return sess + entries;
+}
+
 export function dayStats(key: string, habits: Habit[]) {
   const d = store.get().days[key];
   if (!d) return { habitPct: 0, studyMinutes: 0, energy: 0 };
   const total = habits.length || 1;
   const done = habits.filter((h) => d.habits[h.id]?.done).length;
-  const studyMinutes = d.study.entries.reduce((acc, e) => acc + e.minutes, 0);
-  return { habitPct: Math.round((done / total) * 100), studyMinutes, energy: d.study.energy ?? 0 };
+  return { habitPct: Math.round((done / total) * 100), studyMinutes: studyMinutesFor(d), energy: d.study.energy ?? 0 };
 }
 
 export { nowIST };
