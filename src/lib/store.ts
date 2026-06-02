@@ -8,14 +8,19 @@ export interface TaskItem { id: string; title: string; priority: "normal" | "hig
 export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
+export interface TimeLogEntry { id: string; activity: string; start: string; end: string; }
+export interface Intention { goal: string; energy: number; habitId?: string; setAt: string; }
+export interface ToughDay { note?: string; at: string; }
+export interface NightSetup { sleepIntention?: string; at: string; }
+
 export interface DayData {
-  habits: Record<string, HabitLog>; // habitId -> log
+  habits: Record<string, HabitLog>;
   study: {
     studiedToday?: boolean;
     notStudiedReason?: string;
     entries: StudyEntry[];
     tomorrowPlan: string;
-    energy?: number; // 1-5
+    energy?: number;
     win?: string;
     reflection?: string;
   };
@@ -23,6 +28,10 @@ export interface DayData {
   tasksTomorrow: TaskItem[];
   availableHours?: number;
   blocks: TimeBlock[];
+  timeLog: TimeLogEntry[];
+  intention?: Intention;
+  toughDay?: ToughDay;
+  nightSetup?: NightSetup;
   lastRolloverKey?: string;
 }
 
@@ -37,15 +46,24 @@ export interface State {
 const KEY = "focusflow_state_v1";
 
 function emptyDay(): DayData {
-  return { habits: {}, study: { entries: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [] };
+  return { habits: {}, study: { entries: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [], timeLog: [] };
 }
 
 const EMPTY_DAY = emptyDay();
 
-function tomorrowKey(): string {
-  const t = nowIST();
-  t.setDate(t.getDate() + 1);
-  return istDateKey(t);
+function backfillDay(d: Partial<DayData> | undefined): DayData {
+  const base = emptyDay();
+  if (!d) return base;
+  return {
+    ...base,
+    ...d,
+    habits: d.habits ?? {},
+    study: { entries: [], tomorrowPlan: "", ...(d.study ?? {}) },
+    tasksToday: d.tasksToday ?? [],
+    tasksTomorrow: d.tasksTomorrow ?? [],
+    blocks: d.blocks ?? [],
+    timeLog: d.timeLog ?? [],
+  };
 }
 
 function load(): State {
@@ -62,10 +80,15 @@ function load(): State {
     ],
     days: {},
   };
+  // backfill all days so new fields are present
+  const fixed: Record<string, DayData> = {};
+  for (const k of Object.keys(base.days || {})) fixed[k] = backfillDay(base.days[k]);
+  base.days = fixed;
+  // Always include today and past data from day 1.
   if (!base.dataStartKey) {
-    base.dataStartKey = tomorrowKey();
-    try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
+    base.dataStartKey = istDateKey();
   }
+  try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
 
@@ -85,7 +108,6 @@ export const store = {
     if (!state.days[key]) {
       state = structuredClone(state);
       state.days[key] = emptyDay();
-      // carry habits forward implicitly (logs default to absent => not done, no reason)
       persist();
     }
   },
@@ -94,19 +116,14 @@ export const store = {
     store.ensureDay(today);
     const day = state.days[today];
     if (day.lastRolloverKey === today) return;
-    // find yesterday
     const yest = lastNDays(2)[0];
     const yDay = state.days[yest];
-    if (yDay && yDay.tasksTomorrow.length && !day.tasksToday.some((t) => yDay.tasksTomorrow.find((x) => x.id === t.id))) {
-      state = structuredClone(state);
+    state = structuredClone(state);
+    if (yDay && yDay.tasksTomorrow.length && !state.days[today].tasksToday.some((t) => yDay.tasksTomorrow.find((x) => x.id === t.id))) {
       state.days[today].tasksToday = [...state.days[today].tasksToday, ...yDay.tasksTomorrow];
-      state.days[today].lastRolloverKey = today;
-      persist();
-    } else {
-      state = structuredClone(state);
-      state.days[today].lastRolloverKey = today;
-      persist();
     }
+    state.days[today].lastRolloverKey = today;
+    persist();
   },
 };
 
@@ -122,7 +139,11 @@ export function useToday() {
   return useStore((s) => s.days[key] ?? EMPTY_DAY);
 }
 
-// mutations
+export function yesterdayKey(): string {
+  const days = lastNDays(2);
+  return days[0];
+}
+
 export const actions = {
   addHabit(name: string, category: HabitCategory) {
     store.set((s) => { s.habits.push({ id: crypto.randomUUID(), name, category, createdAt: new Date().toISOString() }); return s; });
@@ -200,6 +221,47 @@ export const actions = {
     const key = istDateKey();
     store.set((s) => { s.days[key].blocks = s.days[key].blocks.filter((b) => b.id !== id); return s; });
   },
+  addTimeLog(entry: Omit<TimeLogEntry, "id">) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      if (!s.days[key].timeLog) s.days[key].timeLog = [];
+      s.days[key].timeLog.push({ ...entry, id: crypto.randomUUID() });
+      return s;
+    });
+  },
+  removeTimeLog(id: string) {
+    const key = istDateKey();
+    store.set((s) => { s.days[key].timeLog = (s.days[key].timeLog ?? []).filter((t) => t.id !== id); return s; });
+  },
+  setIntention(intent: Omit<Intention, "setAt">) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      s.days[key].intention = { ...intent, setAt: new Date().toISOString() };
+      return s;
+    });
+  },
+  clearIntention() {
+    const key = istDateKey();
+    store.set((s) => { if (s.days[key]) s.days[key].intention = undefined; return s; });
+  },
+  logToughDay(note?: string) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      s.days[key].toughDay = { note: note?.trim() || undefined, at: new Date().toISOString() };
+      return s;
+    });
+  },
+  setNightSetup(sleepIntention?: string) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      s.days[key].nightSetup = { sleepIntention: sleepIntention?.trim() || undefined, at: new Date().toISOString() };
+      return s;
+    });
+  },
   setTaskReminder(scope: "today" | "tomorrow", id: string, remindAt: string | null) {
     const key = istDateKey();
     store.set((s) => {
@@ -234,7 +296,6 @@ function notify(title: string, body?: string) {
   try { new Notification(title, { body, icon: "/favicon.ico", tag: title }); } catch {}
 }
 
-// Schedule next midnight rollover + task reminder ticks
 export function startMidnightWatcher() {
   if (typeof window === "undefined") return;
   const tick = () => {
@@ -251,7 +312,6 @@ function checkReminders() {
   const day = store.get().days[key];
   if (!day) return;
   const now = Date.now();
-  // per-task reminders
   for (const t of day.tasksToday) {
     if (t.done || !t.remindAt || t.reminded) continue;
     const ts = new Date(t.remindAt).getTime();
@@ -260,7 +320,6 @@ function checkReminders() {
       actions.markTaskReminded(t.id);
     }
   }
-  // end-of-day reminder
   const settings = getSettings();
   if (settings.eodReminderEnabled && store.get().eodNotifiedKey !== key) {
     const ist = nowIST();
