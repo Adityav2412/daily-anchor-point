@@ -65,7 +65,7 @@ function backfillDay(d: Partial<DayData> | undefined): DayData {
     ...base,
     ...d,
     habits: d.habits ?? {},
-    study: { entries: [], sessions: [], tomorrowPlan: "", ...(d.study ?? {}), sessions: d.study?.sessions ?? [], entries: d.study?.entries ?? [] },
+    study: { tomorrowPlan: "", ...(d.study ?? {}), entries: d.study?.entries ?? [], sessions: d.study?.sessions ?? [] },
     tasksToday: d.tasksToday ?? [],
     tasksTomorrow: d.tasksTomorrow ?? [],
     blocks: d.blocks ?? [],
