@@ -41,6 +41,8 @@ export interface DayData {
   lastRolloverKey?: string;
 }
 
+export interface CalendarEvent { id: string; name: string; date: string; note?: string; createdAt: string; }
+
 export interface State {
   habits: Habit[];
   days: Record<string, DayData>;
@@ -48,7 +50,9 @@ export interface State {
   eodNotifiedKey?: string;
   dataStartKey?: string;
   customCategories?: string[];
+  events?: CalendarEvent[];
 }
+
 
 const KEY = "focusflow_state_v1";
 
