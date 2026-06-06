@@ -97,6 +97,8 @@ function load(): State {
   base.days = fixed;
   if (!base.dataStartKey) base.dataStartKey = istDateKey();
   if (!base.customCategories) base.customCategories = [];
+  if (!base.events) base.events = [];
+
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
