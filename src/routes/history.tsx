@@ -242,7 +242,13 @@ function HistoryPage() {
               <Sparkles size={14} />
               {aiLoading ? "Thinking…" : "Get this week's insights"}
             </button>
-            {aiError && <p className="mt-3 text-xs text-foreground/65 italic">{aiError}</p>}
+            {aiError && (
+              <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300 p-3 text-xs whitespace-pre-wrap break-words">
+                <div className="font-semibold mb-1">AI Insights error</div>
+                {aiError}
+              </div>
+            )}
+
             {aiResult && (
               <div className="mt-4 bg-background/70 rounded-2xl p-4 text-sm whitespace-pre-wrap leading-relaxed animate-fade-up">
                 {aiResult}
