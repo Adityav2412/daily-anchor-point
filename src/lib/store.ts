@@ -337,8 +337,18 @@ export const actions = {
   },
   markEodNotified(key: string) {
     store.set((s) => { s.eodNotifiedKey = key; return s; });
+  addEvent(name: string, date: string, note?: string) {
+    store.set((s) => {
+      if (!s.events) s.events = [];
+      s.events.push({ id: crypto.randomUUID(), name: name.trim(), date, note: note?.trim() || undefined, createdAt: new Date().toISOString() });
+      return s;
+    });
+  },
+  removeEvent(id: string) {
+    store.set((s) => { s.events = (s.events ?? []).filter((e) => e.id !== id); return s; });
   },
 };
+
 
 export function getSettings(): Settings {
   return store.get().settings ?? { eodReminderEnabled: true, eodMinutesBefore: 30 };
