@@ -60,12 +60,20 @@ function HistoryPage() {
     setAiError(null);
     setAiResult(null);
     try {
-      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        setAiError("Add VITE_GEMINI_API_KEY in your build secrets to enable insights.");
+      const env = (import.meta as any).env ?? {};
+      const apiKey: string | undefined = env.VITE_GEMINI_API_KEY;
+      // Debug: log presence + length only (never the value)
+      console.log("[AI Insights] VITE_GEMINI_API_KEY present:", !!apiKey, "length:", apiKey?.length ?? 0);
+      console.log("[AI Insights] import.meta.env keys:", Object.keys(env).filter((k) => k.startsWith("VITE_")));
+      if (!apiKey || apiKey.trim() === "") {
+        setAiError(
+          "VITE_GEMINI_API_KEY is missing at build time. Add it in Netlify → Site settings → Environment variables (or Lovable Build Secrets), then redeploy. Available VITE_* keys: " +
+            (Object.keys(env).filter((k) => k.startsWith("VITE_")).join(", ") || "none")
+        );
         setAiLoading(false);
         return;
       }
+
       const last7 = lastNDays(7);
       const summary = last7.map((k) => {
         const d = days[k];
@@ -234,7 +242,13 @@ function HistoryPage() {
               <Sparkles size={14} />
               {aiLoading ? "Thinking…" : "Get this week's insights"}
             </button>
-            {aiError && <p className="mt-3 text-xs text-foreground/65 italic">{aiError}</p>}
+            {aiError && (
+              <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300 p-3 text-xs whitespace-pre-wrap break-words">
+                <div className="font-semibold mb-1">AI Insights error</div>
+                {aiError}
+              </div>
+            )}
+
             {aiResult && (
               <div className="mt-4 bg-background/70 rounded-2xl p-4 text-sm whitespace-pre-wrap leading-relaxed animate-fade-up">
                 {aiResult}
