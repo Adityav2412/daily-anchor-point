@@ -41,6 +41,8 @@ export interface DayData {
   lastRolloverKey?: string;
 }
 
+export interface CalendarEvent { id: string; name: string; date: string; note?: string; createdAt: string; }
+
 export interface State {
   habits: Habit[];
   days: Record<string, DayData>;
@@ -48,7 +50,9 @@ export interface State {
   eodNotifiedKey?: string;
   dataStartKey?: string;
   customCategories?: string[];
+  events?: CalendarEvent[];
 }
+
 
 const KEY = "focusflow_state_v1";
 
@@ -93,6 +97,8 @@ function load(): State {
   base.days = fixed;
   if (!base.dataStartKey) base.dataStartKey = istDateKey();
   if (!base.customCategories) base.customCategories = [];
+  if (!base.events) base.events = [];
+
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
@@ -332,7 +338,19 @@ export const actions = {
   markEodNotified(key: string) {
     store.set((s) => { s.eodNotifiedKey = key; return s; });
   },
+  addEvent(name: string, date: string, note?: string) {
+
+    store.set((s) => {
+      if (!s.events) s.events = [];
+      s.events.push({ id: crypto.randomUUID(), name: name.trim(), date, note: note?.trim() || undefined, createdAt: new Date().toISOString() });
+      return s;
+    });
+  },
+  removeEvent(id: string) {
+    store.set((s) => { s.events = (s.events ?? []).filter((e) => e.id !== id); return s; });
+  },
 };
+
 
 export function getSettings(): Settings {
   return store.get().settings ?? { eodReminderEnabled: true, eodMinutesBefore: 30 };

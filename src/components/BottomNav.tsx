@@ -6,7 +6,9 @@ const items = [
   { to: "/study", label: "Study", emoji: "📚" },
   { to: "/tasks", label: "Tasks", emoji: "✓" },
   { to: "/planner", label: "Time", emoji: "⏱" },
+  { to: "/calendar", label: "Events", emoji: "📅" },
   { to: "/history", label: "Stats", emoji: "📈" },
+
 ] as const;
 
 export function BottomNav() {
