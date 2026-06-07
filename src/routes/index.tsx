@@ -56,6 +56,9 @@ function TodayPage() {
   const [nTask1, setNTask1] = useState("");
   const [nTask2, setNTask2] = useState("");
   const [nTask3, setNTask3] = useState("");
+  const [nStudy1, setNStudy1] = useState<boolean | null>(null);
+  const [nStudy2, setNStudy2] = useState<boolean | null>(null);
+  const [nStudy3, setNStudy3] = useState<boolean | null>(null);
   const [nPlan, setNPlan] = useState(today.study.tomorrowPlan ?? "");
   const [nSleep, setNSleep] = useState("23:00");
 
