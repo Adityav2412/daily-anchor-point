@@ -246,13 +246,45 @@ export const actions = {
       return s;
     });
   },
-  addTask(scope: "today" | "tomorrow", title: string, priority: "normal" | "high") {
+  addTask(scope: "today" | "tomorrow", title: string, priority: "normal" | "high", isStudy?: boolean) {
     const key = istDateKey();
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
-      const t: TaskItem = { id: crypto.randomUUID(), title, priority, done: false, createdAt: new Date().toISOString() };
+      const study = isStudy ?? detectStudyTask(title);
+      const t: TaskItem = { id: crypto.randomUUID(), title, priority, done: false, createdAt: new Date().toISOString(), isStudy: study };
       if (scope === "today") s.days[key].tasksToday.push(t);
       else s.days[key].tasksTomorrow.push(t);
+      // If a tomorrow task is a study task, append its title to today's tomorrowPlan
+      // so it surfaces in tomorrow's Study tab as TODAY'S PLAN.
+      if (scope === "tomorrow" && study) {
+        const existing = (s.days[key].study.tomorrowPlan ?? "").trim();
+        const lines = existing ? existing.split("\n").map((l) => l.replace(/^•\s*/, "").trim()) : [];
+        if (!lines.includes(title.trim())) {
+          s.days[key].study.tomorrowPlan = (existing ? existing + "\n" : "") + `• ${title.trim()}`;
+        }
+      }
+      return s;
+    });
+  },
+  setTaskStudy(scope: "today" | "tomorrow", id: string, isStudy: boolean) {
+    const key = istDateKey();
+    store.set((s) => {
+      const arr = scope === "today" ? s.days[key].tasksToday : s.days[key].tasksTomorrow;
+      const t = arr.find((x) => x.id === id);
+      if (!t) return s;
+      t.isStudy = isStudy;
+      if (scope === "tomorrow") {
+        const existing = (s.days[key].study.tomorrowPlan ?? "").trim();
+        const lines = existing ? existing.split("\n") : [];
+        const marker = `• ${t.title.trim()}`;
+        if (isStudy) {
+          if (!lines.some((l) => l.replace(/^•\s*/, "").trim() === t.title.trim())) {
+            s.days[key].study.tomorrowPlan = (existing ? existing + "\n" : "") + marker;
+          }
+        } else {
+          s.days[key].study.tomorrowPlan = lines.filter((l) => l.replace(/^•\s*/, "").trim() !== t.title.trim()).join("\n");
+        }
+      }
       return s;
     });
   },
