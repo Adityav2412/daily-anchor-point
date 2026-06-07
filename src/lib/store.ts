@@ -4,7 +4,13 @@ import { istDateKey, lastNDays, nowIST } from "./ist";
 export type HabitCategory = "non-negotiable" | "adapting";
 export interface Habit { id: string; name: string; category: HabitCategory; createdAt: string; }
 export interface HabitLog { done: boolean; reason?: string; }
-export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; }
+export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; isStudy?: boolean; }
+
+const STUDY_KEYWORDS = ["learn", "read", "study", "revise", "revision", "practice", "chapter", "topic", "lecture", "notes", "exam", "syllabus", "assignment", "homework"];
+export function detectStudyTask(title: string): boolean {
+  const t = title.toLowerCase();
+  return STUDY_KEYWORDS.some((k) => new RegExp(`\\b${k}`, "i").test(t));
+}
 export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; }
