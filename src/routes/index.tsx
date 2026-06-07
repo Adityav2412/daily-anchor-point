@@ -71,15 +71,15 @@ function TodayPage() {
 
   const addTask = () => {
     if (!taskTitle.trim()) return;
-    actions.addTask("today", taskTitle.trim(), taskHigh ? "high" : "normal");
-    if (taskRemind) {
+    actions.addTask(taskScope, taskTitle.trim(), taskHigh ? "high" : "normal");
+    if (taskRemind && taskScope === "today") {
       const key = istDateKey();
       setTimeout(() => {
         const t = store.get().days[key]?.tasksToday.slice(-1)[0];
         if (t) actions.setTaskReminder("today", t.id, new Date(taskRemind).toISOString());
       }, 0);
     }
-    setTaskTitle(""); setTaskHigh(false); setTaskRemind("");
+    setTaskTitle(""); setTaskHigh(false); setTaskRemind(""); setTaskScope("today");
   };
 
   return (
