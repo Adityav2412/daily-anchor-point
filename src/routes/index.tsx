@@ -257,9 +257,27 @@ function TodayPage() {
             <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Wind down</div>
             <p className="font-display text-xl tracking-tight mb-3">Plan tomorrow in 2 minutes<span className="italic font-light text-muted-foreground">.</span></p>
             <div className="space-y-2 mb-3">
-              <input value={nTask1} onChange={(e) => setNTask1(e.target.value)} placeholder="Tomorrow's task 1" className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none placeholder:text-foreground/40" />
-              <input value={nTask2} onChange={(e) => setNTask2(e.target.value)} placeholder="Tomorrow's task 2" className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none placeholder:text-foreground/40" />
-              <input value={nTask3} onChange={(e) => setNTask3(e.target.value)} placeholder="Tomorrow's task 3" className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none placeholder:text-foreground/40" />
+              {([
+                [nTask1, setNTask1, nStudy1, setNStudy1, 1],
+                [nTask2, setNTask2, nStudy2, setNStudy2, 2],
+                [nTask3, setNTask3, nStudy3, setNStudy3, 3],
+              ] as const).map(([val, setVal, study, setStudy, i]) => {
+                const auto = detectStudyTask(val);
+                const isStudy = study ?? auto;
+                return (
+                  <div key={i} className="space-y-1">
+                    <input value={val} onChange={(e) => (setVal as (v: string) => void)(e.target.value)} placeholder={`Tomorrow's task ${i}`} className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none placeholder:text-foreground/40" />
+                    {val.trim() && (
+                      <div className="flex items-center gap-2 px-2">
+                        <span className="text-[10px] uppercase tracking-wider text-foreground/50">Study task?</span>
+                        <button type="button" onClick={() => (setStudy as (v: boolean) => void)(true)} className={`text-[10px] px-2 py-0.5 rounded-full press ${isStudy ? "bg-foreground text-background" : "bg-background/60 text-foreground/60"}`}>Yes</button>
+                        <button type="button" onClick={() => (setStudy as (v: boolean) => void)(false)} className={`text-[10px] px-2 py-0.5 rounded-full press ${!isStudy ? "bg-foreground text-background" : "bg-background/60 text-foreground/60"}`}>No</button>
+                        {study === null && auto && <span className="text-[10px] italic text-foreground/40">auto-detected</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <textarea
               value={nPlan} onChange={(e) => setNPlan(e.target.value)}
@@ -273,7 +291,17 @@ function TodayPage() {
             </div>
             <button
               onClick={() => {
-                [nTask1, nTask2, nTask3].forEach((t) => { if (t.trim()) actions.addTask("tomorrow", t.trim(), "normal"); });
+                const items = [
+                  { title: nTask1, study: nStudy1 },
+                  { title: nTask2, study: nStudy2 },
+                  { title: nTask3, study: nStudy3 },
+                ];
+                items.forEach(({ title, study }) => {
+                  const t = title.trim();
+                  if (!t) return;
+                  const isStudy = study ?? detectStudyTask(t);
+                  actions.addTask("tomorrow", t, "normal", isStudy);
+                });
                 if (nPlan.trim()) actions.setStudy({ tomorrowPlan: nPlan.trim() });
                 actions.setNightSetup(nSleep);
               }}
