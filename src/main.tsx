@@ -19,6 +19,11 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
+// Suppress browser install prompt / "Tap to copy URL" banners.
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); });
+}
+
 // Service worker: production only, never inside Lovable preview/iframe.
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();

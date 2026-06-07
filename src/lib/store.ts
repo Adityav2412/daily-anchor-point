@@ -194,14 +194,22 @@ export const actions = {
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
       if (!s.days[key].study.sessions) s.days[key].study.sessions = [];
-      s.days[key].study.sessions.push({ ...sess, id: crypto.randomUUID() });
+      const id = crypto.randomUUID();
+      s.days[key].study.sessions.push({ ...sess, id });
       s.days[key].study.studiedToday = true;
+      // Mirror into Time Tracker so Time + Stats reflect study automatically.
+      if (!s.days[key].timeSessions) s.days[key].timeSessions = [];
+      s.days[key].timeSessions.push({ id, category: "Study", startISO: sess.startISO, endISO: sess.endISO, durationMin: sess.durationMin });
       return s;
     });
   },
   removeStudySession(id: string) {
     const key = istDateKey();
-    store.set((s) => { s.days[key].study.sessions = (s.days[key].study.sessions ?? []).filter((x) => x.id !== id); return s; });
+    store.set((s) => {
+      s.days[key].study.sessions = (s.days[key].study.sessions ?? []).filter((x) => x.id !== id);
+      s.days[key].timeSessions = (s.days[key].timeSessions ?? []).filter((x) => x.id !== id);
+      return s;
+    });
   },
   setPlanStatus(status: PlanStatus | undefined) {
     const key = istDateKey();
@@ -357,8 +365,15 @@ export function getSettings(): Settings {
 }
 
 function notify(title: string, body?: string) {
-  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-  try { new Notification(title, { body, icon: "/favicon.ico", tag: title }); } catch {}
+  if (typeof window === "undefined") return;
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    try { new Notification(title, { body, icon: "/favicon.ico", tag: title }); return; } catch {}
+  }
+  // In-app fallback when notifications are not permitted.
+  try {
+    const ev = new CustomEvent("daily:in-app-alert", { detail: { title, body } });
+    window.dispatchEvent(ev);
+  } catch {}
 }
 
 export function startMidnightWatcher() {
