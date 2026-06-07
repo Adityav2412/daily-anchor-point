@@ -28,7 +28,6 @@ function TodayPage() {
   const allDays = useStore((s) => s.days);
   const todayKey = istDateKey();
   const days = lastNDays(7);
-  const [winDraft, setWinDraft] = useState(today.study.win ?? "");
   const [greeting, setGreeting] = useState("");
   useEffect(() => { setGreeting(istGreeting("Akshay")); }, []);
 
@@ -139,24 +138,6 @@ function TodayPage() {
           </div>
         </div>
 
-        {/* Win of the day */}
-        <div className="card-butter rounded-[24px] p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-2">Win of the day</div>
-          {today.study.win ? (
-            <p className="font-display text-xl tracking-tight">{today.study.win}<span className="italic font-light text-muted-foreground">.</span></p>
-          ) : (
-            <p className="text-sm text-foreground/60 italic">Anything counts — even getting out of bed.</p>
-          )}
-          <div className="mt-3 flex gap-2">
-            <input
-              value={winDraft}
-              onChange={(e) => setWinDraft(e.target.value)}
-              placeholder="What went well?"
-              className="flex-1 rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
-            />
-            <button onClick={() => actions.setStudy({ win: winDraft })} className="rounded-full bg-foreground px-4 py-2.5 text-sm text-background press">Save</button>
-          </div>
-        </div>
 
         {/* Tasks */}
         <section>
