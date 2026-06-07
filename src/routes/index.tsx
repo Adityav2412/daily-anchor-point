@@ -35,6 +35,7 @@ function TodayPage() {
   const [taskTitle, setTaskTitle] = useState("");
   const [taskHigh, setTaskHigh] = useState(false);
   const [taskRemind, setTaskRemind] = useState("");
+  const [taskScope, setTaskScope] = useState<"today" | "tomorrow">("today");
   const [editingReminder, setEditingReminder] = useState<string | null>(null);
   const [perm, setPerm] = useState<NotificationPermission | "unknown">("unknown");
   useEffect(() => { if (typeof Notification !== "undefined") setPerm(Notification.permission); }, []);
