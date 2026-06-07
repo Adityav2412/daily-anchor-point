@@ -168,17 +168,33 @@ function TodayPage() {
               <button onClick={addTask} className="rounded-full bg-foreground text-background px-4 press"><Plus size={14} /></button>
             </div>
             <div className="flex items-center gap-2 px-1">
-              <Bell size={12} className="text-muted-foreground" />
-              <input
-                type="datetime-local"
-                value={taskRemind}
-                onChange={(e) => setTaskRemind(e.target.value)}
-                className="flex-1 rounded-full bg-muted px-3 py-1.5 text-xs outline-none"
-              />
-              {taskRemind && <button onClick={() => setTaskRemind("")} className="text-muted-foreground"><X size={12} /></button>}
-              {!taskRemind && <button onClick={() => setTaskRemind(defaultReminderLocal())} className="text-[10px] uppercase tracking-wider text-muted-foreground press">+1h</button>}
+              <div className="flex rounded-full bg-muted p-0.5">
+                <button onClick={() => setTaskScope("today")} className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full press ${taskScope === "today" ? "bg-foreground text-background" : "text-foreground/60"}`}>Today</button>
+                <button onClick={() => setTaskScope("tomorrow")} className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full press ${taskScope === "tomorrow" ? "bg-foreground text-background" : "text-foreground/60"}`}>Tomorrow</button>
+              </div>
+              {taskScope === "today" && (
+                <>
+                  <Bell size={12} className="text-muted-foreground ml-1" />
+                  <input
+                    type="datetime-local"
+                    value={taskRemind}
+                    onChange={(e) => setTaskRemind(e.target.value)}
+                    className="flex-1 rounded-full bg-muted px-3 py-1.5 text-xs outline-none"
+                  />
+                  {taskRemind && <button onClick={() => setTaskRemind("")} className="text-muted-foreground"><X size={12} /></button>}
+                  {!taskRemind && <button onClick={() => setTaskRemind(defaultReminderLocal())} className="text-[10px] uppercase tracking-wider text-muted-foreground press">+1h</button>}
+                </>
+              )}
+              {taskScope === "tomorrow" && (
+                <span className="text-[10px] italic text-muted-foreground">appears tomorrow after midnight IST</span>
+              )}
             </div>
           </div>
+          {today.tasksTomorrow.length > 0 && (
+            <div className="text-[11px] text-muted-foreground italic px-1 -mt-1 mb-2">
+              {today.tasksTomorrow.length} task{today.tasksTomorrow.length === 1 ? "" : "s"} queued for tomorrow
+            </div>
+          )}
 
           <div className="space-y-2.5 stagger">
             {today.tasksToday.length === 0 ? (
