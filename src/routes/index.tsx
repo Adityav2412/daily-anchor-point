@@ -1,13 +1,26 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useStore, useToday, studyMinutesFor } from "@/lib/store";
+import { actions, useStore, useToday, store } from "@/lib/store";
 import { istDateKey, lastNDays, formatISTDate, nowIST, istGreeting } from "@/lib/ist";
+import { Plus, X, Flame, Bell, BellOff } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "Today — daily." }] }),
   component: TodayPage,
 });
+
+function defaultReminderLocal(): string {
+  const d = nowIST();
+  d.setMinutes(d.getMinutes() + 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function formatReminder(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
 
 function TodayPage() {
   const today = useToday();
@@ -16,10 +29,21 @@ function TodayPage() {
   const todayKey = istDateKey();
   const days = lastNDays(7);
   const [winDraft, setWinDraft] = useState(today.study.win ?? "");
-  const [reflectDraft, setReflectDraft] = useState(today.study.reflection ?? "");
-  const [energyOpen, setEnergyOpen] = useState(false);
   const [greeting, setGreeting] = useState("");
   useEffect(() => { setGreeting(istGreeting("Akshay")); }, []);
+
+  // Task input
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskHigh, setTaskHigh] = useState(false);
+  const [taskRemind, setTaskRemind] = useState("");
+  const [editingReminder, setEditingReminder] = useState<string | null>(null);
+  const [perm, setPerm] = useState<NotificationPermission | "unknown">("unknown");
+  useEffect(() => { if (typeof Notification !== "undefined") setPerm(Notification.permission); }, []);
+  const requestPerm = async () => {
+    if (typeof Notification === "undefined") return;
+    const p = await Notification.requestPermission();
+    setPerm(p);
+  };
 
   // Tough day
   const [toughOpen, setToughOpen] = useState(false);
@@ -38,10 +62,22 @@ function TodayPage() {
 
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
   const habitPct = habits.length ? Math.round((habitDone / habits.length) * 100) : 0;
-  const studyMin = studyMinutesFor(today);
   const loggedCount = Object.keys(allDays).length;
   const taskDone = today.tasksToday.filter((t) => t.done).length;
   const highOpen = today.tasksToday.filter((t) => t.priority === "high" && !t.done).length;
+
+  const addTask = () => {
+    if (!taskTitle.trim()) return;
+    actions.addTask("today", taskTitle.trim(), taskHigh ? "high" : "normal");
+    if (taskRemind) {
+      const key = istDateKey();
+      setTimeout(() => {
+        const t = store.get().days[key]?.tasksToday.slice(-1)[0];
+        if (t) actions.setTaskReminder("today", t.id, new Date(taskRemind).toISOString());
+      }, 0);
+    }
+    setTaskTitle(""); setTaskHigh(false); setTaskRemind("");
+  };
 
   return (
     <AppShell title="Today">
@@ -51,7 +87,7 @@ function TodayPage() {
           {greeting || "\u00a0"}
         </div>
 
-        {/* Days logged — Napa banner */}
+        {/* Days logged */}
         <div className="card-sky rounded-[28px] p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
@@ -79,7 +115,7 @@ function TodayPage() {
           </div>
         </div>
 
-        {/* Progress + tasks */}
+        {/* Habits + tasks summary */}
         <div className="grid grid-cols-5 gap-3">
           <div className="col-span-3 card-paper rounded-[24px] p-5 hover-lift">
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Habits today</div>
@@ -118,84 +154,91 @@ function TodayPage() {
               placeholder="What went well?"
               className="flex-1 rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
             />
-            <button
-              onClick={() => actions.setStudy({ win: winDraft })}
-              className="rounded-full bg-foreground px-4 py-2.5 text-sm text-background press"
-            >Save</button>
+            <button onClick={() => actions.setStudy({ win: winDraft })} className="rounded-full bg-foreground px-4 py-2.5 text-sm text-background press">Save</button>
           </div>
         </div>
 
-        {/* Energy + study */}
-        <div className="grid grid-cols-2 gap-3">
-          {energyOpen ? (
-            <div className="card-lavender rounded-[24px] p-5">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-3">Energy</div>
-              <div className="flex gap-2">
-                {[1,2,3,4,5].map((n) => (
-                  <button key={n} onClick={() => { actions.setStudy({ energy: n }); setEnergyOpen(false); }}
-                    className={`flex-1 rounded-full py-3 font-display text-xl press transition ${today.study.energy === n ? "bg-foreground text-background" : "bg-background/70"}`}>{n}</button>
-                ))}
-              </div>
-              <button onClick={() => setEnergyOpen(false)} className="mt-3 text-[11px] text-foreground/50 underline">Cancel</button>
-            </div>
-          ) : (
-            <button onClick={() => setEnergyOpen(true)} className="text-left card-lavender rounded-[24px] p-5 press transition">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Energy</div>
-              <div className="mt-3 font-display text-5xl leading-none">{today.study.energy ?? "—"}{today.study.energy && <span className="text-muted-foreground text-2xl">/5</span>}</div>
-              <div className="text-xs text-foreground/60 mt-1">Tap to log today.</div>
-            </button>
-          )}
-          <div className="card-peach rounded-[24px] p-5">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Studied</div>
-            <div className="mt-3 font-display text-5xl leading-none">{Math.floor(studyMin/60)}<span className="text-muted-foreground text-2xl">h {studyMin%60}m</span></div>
-            <div className="text-xs text-foreground/60 mt-1">Today's sessions.</div>
-          </div>
-        </div>
-
-        {/* Today's tasks preview */}
+        {/* Tasks */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-display text-2xl tracking-tight">Today's Tasks</h2>
-              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">focus</span>
-            </div>
-            <Link to="/tasks" className="text-xs text-muted-foreground tabular-nums bg-foreground/5 px-2.5 py-1 rounded-full hover:bg-foreground/10 transition">Manage →</Link>
+            <h2 className="font-display text-2xl tracking-tight">Tasks</h2>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">focus</span>
           </header>
+
+          {perm !== "granted" && perm !== "unknown" && (
+            <button onClick={requestPerm} className="w-full card-sky rounded-2xl p-3 text-sm text-left flex items-center gap-2 press mb-2">
+              <Bell size={14} /> Enable notifications for reminders
+            </button>
+          )}
+
+          <div className="card-paper rounded-[24px] p-4 space-y-2 mb-3">
+            <div className="flex gap-2">
+              <input
+                value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addTask(); }}
+                placeholder="Add a task"
+                className="flex-1 rounded-full bg-muted px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
+              />
+              <button onClick={() => setTaskHigh(!taskHigh)} className={`rounded-full px-3 press transition ${taskHigh ? "bg-destructive text-destructive-foreground" : "bg-muted"}`} title="High priority"><Flame size={14} /></button>
+              <button onClick={addTask} className="rounded-full bg-foreground text-background px-4 press"><Plus size={14} /></button>
+            </div>
+            <div className="flex items-center gap-2 px-1">
+              <Bell size={12} className="text-muted-foreground" />
+              <input
+                type="datetime-local"
+                value={taskRemind}
+                onChange={(e) => setTaskRemind(e.target.value)}
+                className="flex-1 rounded-full bg-muted px-3 py-1.5 text-xs outline-none"
+              />
+              {taskRemind && <button onClick={() => setTaskRemind("")} className="text-muted-foreground"><X size={12} /></button>}
+              {!taskRemind && <button onClick={() => setTaskRemind(defaultReminderLocal())} className="text-[10px] uppercase tracking-wider text-muted-foreground press">+1h</button>}
+            </div>
+          </div>
+
           <div className="space-y-2.5 stagger">
             {today.tasksToday.length === 0 ? (
               <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing here. That's okay.</div>
             ) : (
-              today.tasksToday.slice(0, 5).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => actions.toggleTask("today", t.id)}
-                  className={`w-full flex items-center gap-3 rounded-2xl p-4 text-left press ${t.priority === "high" ? "card-blush" : "card-paper"}`}
-                >
-                  <span className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[12px] transition ${t.done ? "bg-foreground border-foreground text-background" : "border-foreground/30"}`}>
-                    {t.done && "✓"}
-                  </span>
-                  <span className={`flex-1 text-[15px] ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</span>
-                  {t.priority === "high" && <span className="text-[10px] uppercase tracking-wider text-destructive font-bold">🔥 High</span>}
-                </button>
+              today.tasksToday.map((t) => (
+                <div key={t.id} className={`rounded-2xl ${t.priority === "high" ? "card-blush" : "card-paper"}`}>
+                  <div className="w-full flex items-center gap-3 p-4">
+                    <button onClick={() => actions.toggleTask("today", t.id)}
+                      className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[12px] transition shrink-0 press ${t.done ? "bg-foreground border-foreground text-background" : "border-foreground/30"}`}>
+                      {t.done && "✓"}
+                    </button>
+                    <span className={`flex-1 text-[15px] ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</span>
+                    {t.priority === "high" && <span className="text-[10px] uppercase tracking-wider text-destructive font-bold">🔥 High</span>}
+                    <button onClick={() => actions.removeTask("today", t.id)} className="text-foreground/30 hover:text-foreground transition press"><X size={14} /></button>
+                  </div>
+                  <div className="px-4 pb-3 -mt-1 flex items-center gap-2 text-[11px]">
+                    {t.remindAt ? (
+                      <button onClick={() => setEditingReminder(editingReminder === t.id ? null : t.id)} className="flex items-center gap-1 text-foreground/70 press">
+                        <Bell size={11} /> {formatReminder(t.remindAt)}
+                      </button>
+                    ) : (
+                      <button onClick={() => setEditingReminder(editingReminder === t.id ? null : t.id)} className="flex items-center gap-1 text-muted-foreground press">
+                        <BellOff size={11} /> Add reminder
+                      </button>
+                    )}
+                    {editingReminder === t.id && (
+                      <>
+                        <input
+                          type="datetime-local"
+                          defaultValue={t.remindAt ? t.remindAt.slice(0, 16) : defaultReminderLocal()}
+                          onChange={(e) => actions.setTaskReminder("today", t.id, e.target.value ? new Date(e.target.value).toISOString() : null)}
+                          className="flex-1 rounded-full bg-muted px-2 py-1 text-[11px] outline-none"
+                        />
+                        {t.remindAt && (
+                          <button onClick={() => { actions.setTaskReminder("today", t.id, null); setEditingReminder(null); }} className="text-muted-foreground"><X size={11} /></button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               ))
             )}
           </div>
         </section>
-
-        {/* Reflection */}
-        <div className="card-paper rounded-[24px] p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">How did today feel?</div>
-          <div className="flex gap-2">
-            <input
-              value={reflectDraft}
-              onChange={(e) => setReflectDraft(e.target.value)}
-              placeholder="One line is enough."
-              className="flex-1 rounded-full bg-muted px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
-            />
-            <button onClick={() => actions.setStudy({ reflection: reflectDraft })} className="rounded-full bg-foreground px-4 py-2.5 text-sm text-background press">Save</button>
-          </div>
-          {today.study.reflection && <p className="text-xs text-muted-foreground italic mt-2">"{today.study.reflection}"</p>}
-        </div>
 
         {/* Tough day */}
         {!toughLogged ? (

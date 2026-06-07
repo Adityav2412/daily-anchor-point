@@ -1,67 +1,71 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday } from "@/lib/store";
-import { lastNDays, formatISTDate, formatClock, formatHM } from "@/lib/ist";
-import { Pause, Play, X } from "lucide-react";
+import { lastNDays, formatISTDate, formatClock, formatHM, nowIST } from "@/lib/ist";
+import { X, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/planner")({
   head: () => ({ meta: [{ title: "Time — daily." }] }),
   component: TimeTrackerPage,
 });
 
-const PRESETS = ["Study", "Exercise", "Rest", "Work"];
+const PRESETS = ["Study", "Exercise", "Rest", "Work", "Other"];
+
+function todayTimeStr(offsetMin = 0): string {
+  const d = nowIST();
+  d.setMinutes(d.getMinutes() + offsetMin);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+// Build today's ISO from an HH:mm string (interpreted as IST wall time).
+function isoFromTodayHHMM(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const ist = nowIST();
+  ist.setHours(h, m, 0, 0);
+  // Convert IST wall time back to actual instant.
+  const offsetMs = (ist.getTimezoneOffset() + 330) * 60000;
+  return new Date(ist.getTime() - offsetMs).toISOString();
+}
 
 function TimeTrackerPage() {
   const today = useToday();
   const allDays = useStore((s) => s.days);
   const customs = useStore((s) => s.customCategories ?? []);
 
+  const [activity, setActivity] = useState("");
   const [category, setCategory] = useState<string>("Study");
   const [customInput, setCustomInput] = useState("");
-  const [running, setRunning] = useState(false);
-  const [startISO, setStartISO] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const intRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [startTime, setStartTime] = useState(todayTimeStr(-30));
+  const [endTime, setEndTime] = useState(todayTimeStr(0));
   const [view, setView] = useState<"week" | "month">("week");
 
-  useEffect(() => {
-    if (!running || !startISO) return;
-    intRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - new Date(startISO).getTime()) / 1000));
-    }, 1000);
-    return () => { if (intRef.current) clearInterval(intRef.current); };
-  }, [running, startISO]);
+  const duration = useMemo(() => {
+    try {
+      const s = isoFromTodayHHMM(startTime);
+      const e = isoFromTodayHHMM(endTime);
+      const min = Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
+      return min;
+    } catch { return 0; }
+  }, [startTime, endTime]);
 
-  const start = () => {
+  const log = () => {
     const cat = customInput.trim() ? customInput.trim() : category;
     if (!cat) return;
+    if (duration <= 0) return;
     if (customInput.trim()) {
       actions.addCustomCategory(customInput.trim());
       setCategory(customInput.trim());
       setCustomInput("");
     }
-    setStartISO(new Date().toISOString());
-    setElapsed(0);
-    setRunning(true);
+    const startISO = isoFromTodayHHMM(startTime);
+    const endISO = isoFromTodayHHMM(endTime);
+    actions.addTimeSession({ category: activity.trim() ? `${cat} — ${activity.trim()}` : cat, startISO, endISO, durationMin: duration });
+    setActivity("");
   };
-
-  const stop = () => {
-    if (!startISO) return;
-    const endISO = new Date().toISOString();
-    const durationMin = Math.max(1, Math.round((new Date(endISO).getTime() - new Date(startISO).getTime()) / 60000));
-    actions.addTimeSession({ category, startISO, endISO, durationMin });
-    setRunning(false);
-    setStartISO(null);
-    setElapsed(0);
-  };
-
-  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
-  const ss = String(elapsed % 60).padStart(2, "0");
 
   const sessions = today.timeSessions ?? [];
 
-  // aggregate
   const periodKeys = useMemo(() => lastNDays(view === "week" ? 7 : 30), [view]);
   const aggregate = useMemo(() => {
     const map = new Map<string, number>();
@@ -69,7 +73,8 @@ function TimeTrackerPage() {
       const d = allDays[k];
       if (!d?.timeSessions) continue;
       for (const s of d.timeSessions) {
-        map.set(s.category, (map.get(s.category) ?? 0) + s.durationMin);
+        const baseCat = s.category.split(" — ")[0];
+        map.set(baseCat, (map.get(baseCat) ?? 0) + s.durationMin);
       }
     }
     return Array.from(map.entries())
@@ -83,56 +88,63 @@ function TimeTrackerPage() {
   return (
     <AppShell title="Time">
       <div className="space-y-4 stagger">
-        {/* Timer */}
-        <div className="card-peach rounded-[24px] p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-3">Track time</div>
+        {/* Manual entry */}
+        <div className="card-peach rounded-[24px] p-5 space-y-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Log time</div>
 
-          {!running && (
-            <>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {allCats.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCategory(c)}
-                    className={`rounded-full px-3 py-1.5 text-xs press transition ${category === c ? "bg-foreground text-background" : "bg-background/70"}`}
-                  >{c}</button>
-                ))}
-              </div>
-              <input
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                placeholder="Or type a new category…"
-                className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none mb-3 placeholder:text-foreground/40"
-              />
-            </>
-          )}
+          <input
+            value={activity}
+            onChange={(e) => setActivity(e.target.value)}
+            placeholder="What did you do?"
+            className="w-full rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
+          />
 
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-display text-5xl tabular-nums leading-none">{mm}:{ss}</div>
-              {running && <div className="text-xs text-foreground/60 mt-1">{category}</div>}
+          <div className="flex gap-2 items-center">
+            <div className="flex-1">
+              <div className="text-[10px] uppercase tracking-wider text-foreground/55 mb-1 px-1">Start</div>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
+                className="w-full rounded-full bg-background/70 px-3 py-2 text-sm outline-none tabular-nums" />
             </div>
-            {!running ? (
-              <button onClick={start} className="h-12 px-5 rounded-full bg-foreground text-background flex items-center gap-2 press">
-                <Play size={16} /> Start
-              </button>
-            ) : (
-              <button onClick={stop} className="h-12 px-5 rounded-full bg-foreground text-background flex items-center gap-2 press">
-                <Pause size={16} /> Stop
-              </button>
-            )}
+            <div className="flex-1">
+              <div className="text-[10px] uppercase tracking-wider text-foreground/55 mb-1 px-1">End</div>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
+                className="w-full rounded-full bg-background/70 px-3 py-2 text-sm outline-none tabular-nums" />
+            </div>
+            <div className="shrink-0 pt-4">
+              <span className="text-xs text-foreground/65 tabular-nums">{duration > 0 ? formatHM(duration) : "—"}</span>
+            </div>
           </div>
+
+          <div className="flex flex-wrap gap-2">
+            {allCats.map((c) => (
+              <button key={c} onClick={() => setCategory(c)}
+                className={`rounded-full px-3 py-1.5 text-xs press transition ${category === c ? "bg-foreground text-background" : "bg-background/70"}`}
+              >{c}</button>
+            ))}
+          </div>
+
+          <input
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            placeholder="Or type a new category…"
+            className="w-full rounded-full bg-background/70 px-4 py-2 text-sm outline-none placeholder:text-foreground/40"
+          />
+
+          <button onClick={log} disabled={duration <= 0}
+            className="w-full rounded-full bg-foreground text-background py-2.5 text-sm press flex items-center justify-center gap-2 disabled:opacity-40">
+            <Plus size={14} /> Add entry
+          </button>
         </div>
 
         {/* Today's sessions */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
             <h2 className="font-display text-2xl tracking-tight">Today</h2>
-            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{sessions.length} sessions</span>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{sessions.length} entries</span>
           </header>
           <div className="space-y-2 stagger">
             {sessions.length === 0 ? (
-              <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing tracked yet. Press Start whenever.</div>
+              <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing logged yet.</div>
             ) : (
               sessions.slice().sort((a, b) => a.startISO.localeCompare(b.startISO)).map((s) => (
                 <div key={s.id} className="card-paper rounded-2xl p-4 flex items-center gap-3">
@@ -146,7 +158,7 @@ function TimeTrackerPage() {
           </div>
         </section>
 
-        {/* View toggle + aggregate */}
+        {/* Aggregate */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
             <h2 className="font-display text-2xl tracking-tight">{view === "week" ? "This week" : "This month"}</h2>
@@ -157,7 +169,7 @@ function TimeTrackerPage() {
           </header>
 
           {aggregate.length === 0 ? (
-            <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">No sessions yet.</div>
+            <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">No entries yet.</div>
           ) : (
             <div className="card-butter rounded-[24px] p-5 space-y-3">
               {aggregate.map((a) => (
@@ -176,7 +188,7 @@ function TimeTrackerPage() {
           )}
         </section>
 
-        {/* Daily breakdown text list */}
+        {/* By day */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
             <h2 className="font-display text-xl tracking-tight">By day</h2>
@@ -187,7 +199,10 @@ function TimeTrackerPage() {
               const ent = d?.timeSessions ?? [];
               if (ent.length === 0) return null;
               const map = new Map<string, number>();
-              for (const e of ent) map.set(e.category, (map.get(e.category) ?? 0) + e.durationMin);
+              for (const e of ent) {
+                const baseCat = e.category.split(" — ")[0];
+                map.set(baseCat, (map.get(baseCat) ?? 0) + e.durationMin);
+              }
               return (
                 <div key={k} className="card-paper rounded-2xl p-3">
                   <div className="font-display text-sm mb-1.5">{formatISTDate(k)}</div>
