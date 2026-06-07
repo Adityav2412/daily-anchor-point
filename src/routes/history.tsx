@@ -97,14 +97,22 @@ function HistoryPage() {
 
       const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English mixed language. Be encouraging, never shame. Data: ${JSON.stringify(summary)}`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
-      );
+      const callModel = async (model: string) => {
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          }
+        );
+        return r;
+      };
+      let res = await callModel("gemini-2.0-flash");
+      if (!res.ok) {
+        console.warn("[AI Insights] gemini-2.0-flash failed, falling back to gemini-1.5-pro");
+        res = await callModel("gemini-1.5-pro");
+      }
       if (!res.ok) {
         const t = await res.text();
         throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
