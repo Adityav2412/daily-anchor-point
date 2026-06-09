@@ -93,12 +93,27 @@ function TodayPage() {
   const encouragement = useMemo(() => {
     if (habitDone >= habits.length && habits.length > 0) return `All habits done today, Akshay 🌱`;
     if (habitDone > 0) return `${habitDone} habit${habitDone === 1 ? "" : "s"} done today, Akshay 🌱`;
+    if (streak === 0) return `Welcome back, Akshay! Let's continue 🌱`;
+    if (streak >= 7) return `${streak}-day streak — beautiful rhythm 🔥`;
     if (streak >= 3) return `${streak}-day streak — keep going ✨`;
     return `Be gentle with yourself today.`;
   }, [habitDone, habits.length, streak]);
 
   // Circular progress for habits
   const habitPct = habits.length ? habitDone / habits.length : 0;
+
+  // 7-day consistency bubbles (last 7 days incl. today)
+  const last7 = useMemo(() => lastNDays(7), []);
+  const consistency = useMemo(() => last7.map((k) => {
+    const d = allDays[k];
+    const any = d && habits.some((h) => d.habits[h.id]?.done);
+    const [y, mo, da] = k.split("-").map(Number);
+    const weekday = new Date(y, mo - 1, da).toLocaleDateString("en-US", { weekday: "short" })[0];
+    return { key: k, filled: !!any, weekday, isToday: k === istDateKey() };
+  }), [last7, allDays, habits]);
+
+  // Hindi quote (deterministic per IST day)
+  const hindiQuote = useMemo(() => dailyHindiQuote(istDateKey()), []);
 
   const addTask = () => {
     if (!taskTitle.trim()) return;
