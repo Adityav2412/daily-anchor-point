@@ -54,6 +54,12 @@ function StudyPage() {
       endISO: now.toISOString(),
       durationMin: minutes,
     });
+    if (typeof window !== "undefined") {
+      const total = (today.study.sessions ?? []).reduce((a, s) => a + s.durationMin, 0) + minutes;
+      window.dispatchEvent(new CustomEvent("daily:in-app-alert", {
+        detail: { title: "Well done, Akshay! 💪", body: `${formatHM(total)} studied today` }
+      }));
+    }
     setTopic(""); setHrs(""); setMins("");
   };
 

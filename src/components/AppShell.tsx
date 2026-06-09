@@ -5,7 +5,7 @@ import { ISTClock } from "./ISTClock";
 import { startMidnightWatcher } from "@/lib/store";
 import { nowIST } from "@/lib/ist";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Leaf } from "lucide-react";
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   useEffect(() => { const stop = startMidnightWatcher(); return () => { stop && stop(); }; }, []);
@@ -48,10 +48,10 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
           </div>
           <button
             onClick={toggle}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="h-12 w-12 rounded-full bg-foreground text-background flex items-center justify-center font-display text-xl shrink-0 shadow-sm animate-pop press transition"
+            aria-label={theme === "dark" ? "Switch to beige mode" : "Switch to dark mode"}
+            className="h-12 w-12 rounded-full bg-foreground text-background flex items-center justify-center shrink-0 shadow-sm animate-pop press transition"
           >
-            {theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+            {theme === "dark" ? <Moon size={18} /> : <Leaf size={18} />}
           </button>
         </div>
       </header>

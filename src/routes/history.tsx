@@ -32,6 +32,20 @@ function HistoryPage() {
     return { key: k, date: formatISTDate(k), min, topics, reason };
   }), [days, last7]);
 
+  // Consistency % — habits-logged days out of last 7
+  const consistencyPct = useMemo(() => {
+    if (habits.length === 0) return 0;
+    let totalSlots = 0, doneSlots = 0;
+    for (const k of last7) {
+      const d = days[k];
+      for (const h of habits) {
+        totalSlots++;
+        if (d?.habits[h.id]?.done) doneSlots++;
+      }
+    }
+    return totalSlots ? Math.round((doneSlots / totalSlots) * 100) : 0;
+  }, [days, habits, last7]);
+
   // AI Insights
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
@@ -98,6 +112,17 @@ function HistoryPage() {
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
         {/* Habits per day */}
+        {/* Consistency % */}
+        <div className="card-amber p-5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Consistency · last 7 days</div>
+          <div className="flex items-baseline gap-2">
+            <div className="font-display text-5xl leading-none">{consistencyPct}<span className="text-2xl text-foreground/60">%</span></div>
+            <div className="text-xs text-foreground/65 ml-2">
+              {consistencyPct >= 80 ? "Beautiful rhythm 🌱" : consistencyPct >= 50 ? "Steady progress ✨" : "Every day counts 🌿"}
+            </div>
+          </div>
+        </div>
+
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
             <h2 className="font-display text-2xl tracking-tight">Habits</h2>
