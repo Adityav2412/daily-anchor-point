@@ -4,10 +4,10 @@ const STORAGE_KEY = "daily-theme";
 type Theme = "dark" | "light";
 
 function getSavedTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "light") return "light";
-  return "dark";
+  if (saved === "dark") return "dark";
+  return "light"; // beige is default
 }
 
 export function useTheme() {
@@ -15,11 +15,8 @@ export function useTheme() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
     localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
@@ -28,8 +25,4 @@ export function useTheme() {
   }, []);
 
   return { theme, toggle };
-}
-
-export function getThemeScript(): string {
-  return `(function(){var t=localStorage.getItem('${STORAGE_KEY}');if(t==='light')document.documentElement.classList.remove('dark');else document.documentElement.classList.add('dark');})();`;
 }
