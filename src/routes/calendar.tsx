@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { actions, useStore } from "@/lib/store";
 import { istDateKey, nowIST } from "@/lib/ist";
 import { Plus, X, Calendar as CalendarIcon } from "lucide-react";
+import { CalendarCheck as CalendarCheckIllo } from "@/components/illustrations";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({ meta: [{ title: "Calendar — upcoming." }] }),

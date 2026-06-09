@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday } from "@/lib/store";
 import { istYesterdayKey, formatHM } from "@/lib/ist";
 import { Plus, X, Check, BookOpen } from "lucide-react";
+import { StudyBook } from "@/components/illustrations";
 
 export const Route = createFileRoute("/study")({
   head: () => ({ meta: [{ title: "Study — daily." }] }),

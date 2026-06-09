@@ -5,6 +5,7 @@ import { useStore, studyMinutesFor } from "@/lib/store";
 import { formatISTDate, lastNDays, formatHM } from "@/lib/ist";
 import { Sparkles } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { StatsBars, AkshayAvatar } from "@/components/illustrations";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),

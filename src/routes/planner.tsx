@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStore, useToday } from "@/lib/store";
 import { lastNDays, formatISTDate, formatHM } from "@/lib/ist";
+import { TimeHourglass } from "@/components/illustrations";
 
 export const Route = createFileRoute("/planner")({
   head: () => ({ meta: [{ title: "Time — daily." }] }),
