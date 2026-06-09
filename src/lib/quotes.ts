@@ -1,39 +1,42 @@
-// Curated rotating Hindi motivational quotes — picked deterministically per IST day.
-export const HINDI_QUOTES: string[] = [
-  "मंजिल उन्हीं को मिलती है जिनके सपनों में जान होती है।",
-  "कोशिश करने वालों की कभी हार नहीं होती।",
-  "हर रोज़ एक नया दिन है — एक नई शुरुआत।",
-  "धैर्य रखो, अच्छे दिन ज़रूर आएंगे।",
-  "छोटे कदम भी मंज़िल तक पहुँचाते हैं।",
-  "खुद पर भरोसा रखो — तुम कर सकते हो।",
-  "मेहनत का कोई विकल्प नहीं होता।",
-  "आज का दिन कल से बेहतर बनाओ।",
-  "सपने वो नहीं जो नींद में आएं, सपने वो हैं जो नींद उड़ा दें।",
-  "रुकना मना है — एक कदम और।",
-  "हर असफलता एक नया सबक है।",
-  "जो लड़ता है वही जीतता है।",
-  "अपनी पढ़ाई ही असली ताकत है।",
-  "थोड़ा-थोड़ा रोज़, बहुत हो जाता है।",
-  "ध्यान भटके तो वापस आ जाओ — कोई बात नहीं।",
-  "खुद से वादा करो, आज एक काम पक्का करूँगा।",
-  "शांति से बैठो, फिर पूरी ताकत से करो।",
-  "अनुशासन ही सबसे बड़ी आज़ादी है।",
-  "हर पन्ना तुम्हें मंज़िल के करीब ले जाता है।",
-  "नींद पूरी, मन शांत, पढ़ाई गहरी।",
-  "आज जो बोओगे, कल वही काटोगे।",
-  "मुश्किलें आती हैं, फिर चली जाती हैं।",
-  "हिम्मत मत हारो — रास्ता खुद बनेगा।",
-  "एक घंटा रोज़ का अभ्यास, साल भर में पहाड़।",
-  "खुद को compare मत करो — कल के अपने आप से करो।",
-  "गहरी साँस लो, और शुरू करो।",
-  "हर दिन एक छोटा सा win काफी है।",
-  "धीरे चलो, पर रुको मत।",
-  "तुम्हारा समय आएगा — बस तैयार रहो।",
-  "आज का पढ़ा, कल काम आएगा।",
+// Curated rotating English motivational quotes — picked deterministically per IST day.
+export const ENGLISH_QUOTES: string[] = [
+  "Only those who dream with all their heart reach the destination.",
+  "Those who keep trying never truly lose.",
+  "Every day is a new day — a fresh start.",
+  "Be patient — good days will surely come.",
+  "Small steps still take you to the destination.",
+  "Trust yourself — you can do this.",
+  "There is no substitute for hard work.",
+  "Make today better than yesterday.",
+  "Real dreams are the ones that don't let you sleep.",
+  "Don't stop — just one more step.",
+  "Every failure is a new lesson.",
+  "The one who fights is the one who wins.",
+  "Your studies are your real strength.",
+  "A little, every day, becomes a lot.",
+  "If your mind wanders, gently bring it back — it's okay.",
+  "Promise yourself: today, I will finish one thing.",
+  "Sit calm, then work with full strength.",
+  "Discipline is the greatest freedom.",
+  "Every page takes you closer to the goal.",
+  "Full sleep, calm mind, deep study.",
+  "What you sow today, you reap tomorrow.",
+  "Difficulties come, and difficulties pass.",
+  "Don't lose courage — the path will appear.",
+  "One hour of practice a day becomes a mountain in a year.",
+  "Don't compare yourself to others — only to who you were yesterday.",
+  "Take a deep breath, and begin.",
+  "One small win each day is enough.",
+  "Walk slowly, but don't stop.",
+  "Your time will come — just stay ready.",
+  "What you study today will help you tomorrow.",
 ];
 
-export function dailyHindiQuote(dateKey: string): string {
-  // deterministic pick: sum of digits in YYYY-MM-DD
+export function dailyQuote(dateKey: string): string {
   const n = dateKey.replace(/-/g, "").split("").reduce((a, c) => a + (parseInt(c, 10) || 0), 0);
-  return HINDI_QUOTES[n % HINDI_QUOTES.length];
+  return ENGLISH_QUOTES[n % ENGLISH_QUOTES.length];
 }
+
+// Backwards-compat exports (old names still imported elsewhere).
+export const HINDI_QUOTES = ENGLISH_QUOTES;
+export const dailyHindiQuote = dailyQuote;

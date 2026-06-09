@@ -3,8 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, store, detectStudyTask } from "@/lib/store";
 import { istDateKey, lastNDays, nowIST, istGreeting } from "@/lib/ist";
-import { dailyHindiQuote } from "@/lib/quotes";
-import { Plus, X, Flame, Bell, BellOff, Sparkles } from "lucide-react";
+import { dailyQuote } from "@/lib/quotes";
+import { Plus, X, Flame, Bell, BellOff } from "lucide-react";
+import {
+  AkshayAvatar,
+  TodayScene,
+  DonutWidget,
+  FlameIllustration,
+  QuoteMark,
+  PencilIllustration,
+} from "@/components/illustrations";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "Today — daily." }] }),
@@ -112,8 +120,8 @@ function TodayPage() {
     return { key: k, filled: !!any, weekday, isToday: k === istDateKey() };
   }), [last7, allDays, habits]);
 
-  // Hindi quote (deterministic per IST day)
-  const hindiQuote = useMemo(() => dailyHindiQuote(istDateKey()), []);
+  // English quote (deterministic per IST day)
+  const todayQuote = useMemo(() => dailyQuote(istDateKey()), []);
 
   const addTask = () => {
     if (!taskTitle.trim()) return;
@@ -131,22 +139,19 @@ function TodayPage() {
   return (
     <AppShell title="Today">
       <div className="space-y-4 stagger">
-        {/* Daily Hindi Quote */}
-        <div className="card-amber p-4">
-          <div className="flex items-center gap-2 mb-1.5">
-            <Sparkles size={12} className="text-amber" />
-            <span className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Aaj ka quote</span>
+        {/* Greeting with Akshay avatar + morning scene */}
+        <div className="card-paper p-5 relative overflow-hidden">
+          <TodayScene className="absolute right-2 top-2 h-16 w-auto opacity-90 pointer-events-none" />
+          <div className="flex items-center gap-3 mb-2">
+            <AkshayAvatar size={56} waving />
+            <div>
+              <p className="font-display text-[24px] leading-tight tracking-tight">
+                {greeting || "Hello, Akshay"}
+              </p>
+              <p suppressHydrationWarning className="text-xs text-muted-foreground mt-0.5">{longDate}</p>
+            </div>
           </div>
-          <p className="font-display text-[17px] leading-snug text-foreground/90 italic">"{hindiQuote}"</p>
-        </div>
-
-        {/* Greeting */}
-        <div className="card-paper p-5">
-          <p className="font-display text-[28px] leading-tight tracking-tight">
-            {greeting || "Hello, Akshay"} <span className="inline-block">👋</span>
-          </p>
-          <p suppressHydrationWarning className="text-xs text-muted-foreground mt-1">{longDate}</p>
-          <div className="flex items-center gap-3 mt-3 flex-wrap">
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
             <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber">
               <Flame size={14} /> {streak} {streak === 1 ? "day" : "days"}
             </span>
@@ -154,10 +159,20 @@ function TodayPage() {
           </div>
         </div>
 
-        {/* Aaj Ka Irada */}
-        <div className="card-mint p-4">
+        {/* Quote widget */}
+        <div className="card-amber p-4 relative overflow-hidden">
+          <div className="absolute -top-1 -left-1 opacity-90"><QuoteMark size={32} /></div>
+          <div className="pl-9">
+            <span className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Quote of the day</span>
+            <p className="font-display text-[17px] leading-snug text-foreground/90 italic mt-1">"{todayQuote}"</p>
+          </div>
+        </div>
+
+        {/* Aaj Ka Irada widget */}
+        <div className="card-mint p-4 relative overflow-hidden">
+          <div className="absolute right-3 top-3 opacity-90"><PencilIllustration size={28} /></div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1.5">Aaj ka irada</div>
-          <p className="text-[13px] text-foreground/70 mb-2">Aaj ek cheez pakka karni hai — kya hai?</p>
+          <p className="text-[13px] text-foreground/70 mb-2 pr-8">One thing to definitely do today — what is it?</p>
           <input
             value={intentionDraft}
             onChange={(e) => setIntentionDraft(e.target.value)}
@@ -180,24 +195,38 @@ function TodayPage() {
           </div>
         </div>
 
-        {/* Habits + tasks summary */}
+        {/* Widgets row: Habits donut + Streak flame */}
         <div className="grid grid-cols-5 gap-3">
           <div className="col-span-3 card-paper p-5 hover-lift">
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Habits today</div>
             <div className="flex items-center gap-4">
-              <CircularProgress pct={habitPct} />
+              <DonutWidget pct={habitPct} size={68} />
               <div>
                 <div className="font-display text-3xl leading-none">{habitDone}<span className="text-muted-foreground text-xl">/{habits.length}</span></div>
                 <div className="text-[11px] text-muted-foreground mt-1">done</div>
               </div>
             </div>
           </div>
-          <div className={`col-span-2 p-5 hover-lift ${highOpen > 0 ? "card-blush" : "card-amber"}`}>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Tasks</div>
-            <div className="mt-3 font-display text-4xl leading-none">
+          <div className="col-span-2 card-amber p-5 hover-lift">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Streak</div>
+            <div className="flex items-center gap-2 mt-3">
+              <FlameIllustration size={36} />
+              <div>
+                <div className="font-display text-3xl leading-none">{streak}</div>
+                <div className="text-[10px] text-foreground/60 mt-0.5">{streak === 1 ? "day" : "days"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tasks summary card */}
+        <div className={`p-5 hover-lift ${highOpen > 0 ? "card-blush" : "card-paper"}`}>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Tasks</div>
+          <div className="mt-2 flex items-baseline gap-3">
+            <div className="font-display text-4xl leading-none">
               {taskDone}<span className="text-foreground/50 text-xl">/{today.tasksToday.length}</span>
             </div>
-            <div className="text-[11px] text-foreground/60 mt-1">
+            <div className="text-[11px] text-foreground/60">
               {highOpen > 0 ? `${highOpen} high priority` : "all clear"}
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useStore, useToday } from "@/lib/store";
 import { lastNDays, formatISTDate, formatHM } from "@/lib/ist";
+import { TimeHourglass } from "@/components/illustrations";
 
 export const Route = createFileRoute("/planner")({
   head: () => ({ meta: [{ title: "Time — daily." }] }),
@@ -47,6 +48,7 @@ function TimeTrackerPage() {
   return (
     <AppShell title="Time">
       <div className="space-y-4 stagger">
+        <div className="flex justify-center -mt-2 mb-1"><TimeHourglass className="h-20 w-auto" /></div>
         {/* Summary */}
         <div className="card-amber p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">This {range === 7 ? "week" : "month"}</div>

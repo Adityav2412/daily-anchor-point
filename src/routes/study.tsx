@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday } from "@/lib/store";
 import { istYesterdayKey, formatHM } from "@/lib/ist";
 import { Plus, X, Check, BookOpen } from "lucide-react";
+import { StudyBook } from "@/components/illustrations";
 
 export const Route = createFileRoute("/study")({
   head: () => ({ meta: [{ title: "Study — daily." }] }),
@@ -68,6 +69,7 @@ function StudyPage() {
   return (
     <AppShell title="Study">
       <div className="space-y-4 stagger">
+        <div className="flex justify-center -mt-2 mb-1"><StudyBook className="h-16 w-auto" /></div>
         {/* TODAY'S PLAN */}
         <div className="card-amber p-5 animate-fade-up">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-3">Today's plan</div>

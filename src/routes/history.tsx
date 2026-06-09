@@ -5,6 +5,7 @@ import { useStore, studyMinutesFor } from "@/lib/store";
 import { formatISTDate, lastNDays, formatHM } from "@/lib/ist";
 import { Sparkles } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { StatsBars, AkshayAvatar } from "@/components/illustrations";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),
@@ -108,6 +109,7 @@ function HistoryPage() {
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
+        <div className="flex justify-center -mt-2 mb-1"><StatsBars className="h-20 w-20" /></div>
         {/* Consistency */}
         <div className="card-amber p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Consistency · last 7 days</div>
@@ -226,7 +228,10 @@ function HistoryPage() {
             <h2 className="font-display text-2xl tracking-tight">AI insights</h2>
           </header>
           <div className="card-amber p-5">
-            <p className="text-sm text-foreground/75 mb-3">Akshay's weekly analysis — last 7 days of habits + study sent privately to Gemini.</p>
+            <div className="flex items-center gap-3 mb-3">
+              <AkshayAvatar size={44} />
+              <p className="text-sm text-foreground/75">Akshay's weekly analysis — last 7 days of habits + study sent privately to Gemini.</p>
+            </div>
             <button
               onClick={runInsights}
               disabled={aiLoading}
