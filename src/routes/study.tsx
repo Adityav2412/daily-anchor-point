@@ -27,10 +27,12 @@ function StudyPage() {
   const today = useToday();
   const yKey = istYesterdayKey();
   const yPlanRaw = useStore((s) => s.days[yKey]?.study.tomorrowPlan ?? "");
+  const yPlanStatus = useStore((s) => s.days[yKey]?.study.planStatus);
   const todayPlanRaw = today.study.tomorrowPlan ?? "";
 
-  // Today's plan = yesterday's plan items, with backlog tag if they roll over
-  const planItems = parsePlanLines(yPlanRaw);
+  // Today's plan = yesterday's plan. If yesterday's plan was not marked done, items become backlog.
+  const isBacklog = yPlanRaw.trim().length > 0 && !yPlanStatus?.done;
+  const planItems = parsePlanLines(yPlanRaw).map((it) => ({ ...it, backlog: it.backlog || isBacklog }));
   const checked = today.study.planStatus?.done === true;
 
   // Manual log
