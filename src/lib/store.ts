@@ -42,6 +42,7 @@ export interface DayData {
   timeLog: TimeLogEntry[];
   timeSessions: TimeSession[];
   intention?: Intention;
+  intentionText?: string; // "Aaj ka irada" — one-line daily intention
   toughDay?: ToughDay;
   nightSetup?: NightSetup;
   lastRolloverKey?: string;
@@ -338,6 +339,14 @@ export const actions = {
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
       s.days[key].intention = { ...intent, setAt: new Date().toISOString() };
+      return s;
+    });
+  },
+  setIntentionText(text: string) {
+    const key = istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      s.days[key].intentionText = text.trim() || undefined;
       return s;
     });
   },
