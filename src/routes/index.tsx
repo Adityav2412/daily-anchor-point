@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, store, detectStudyTask } from "@/lib/store";
 import { istDateKey, lastNDays, nowIST, istGreeting } from "@/lib/ist";
-import { Plus, X, Flame, Bell, BellOff } from "lucide-react";
+import { dailyHindiQuote } from "@/lib/quotes";
+import { Plus, X, Flame, Bell, BellOff, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "Today — daily." }] }),
@@ -48,8 +49,10 @@ function TodayPage() {
     setPerm(p);
   };
 
-  // Win
+  // Win + Intention
   const [winDraft, setWinDraft] = useState(today.study.win ?? "");
+  const [intentionDraft, setIntentionDraft] = useState(today.intentionText ?? "");
+  useEffect(() => { setIntentionDraft(today.intentionText ?? ""); }, [today.intentionText]);
 
   // Tough day
   const [toughOpen, setToughOpen] = useState(false);
