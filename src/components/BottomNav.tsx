@@ -12,21 +12,21 @@ const items = [
 export function BottomNav() {
   const loc = useLocation();
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-md animate-fade-up">
-      <div className="rounded-full bg-foreground/95 backdrop-blur-xl px-1.5 py-1.5 flex items-center justify-between shadow-[0_20px_50px_-15px_rgba(0,0,0,0.35)]">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-md animate-fade-up">
+      <div className="rounded-full bg-card/95 backdrop-blur-xl border border-border px-1.5 py-1.5 flex items-center justify-between shadow-[0_20px_50px_-15px_rgba(0,0,0,0.45)]">
         {items.map((t) => {
           const active = loc.pathname === t.to;
           return (
             <Link
               key={t.to}
               to={t.to}
-              className={`relative flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all duration-300 press ${
-                active ? "bg-background text-foreground shadow-sm" : "text-background/60 hover:text-background"
+              className={`relative flex flex-col items-center gap-0.5 flex-1 py-2 rounded-full transition-all duration-300 press ${
+                active ? "bg-amber text-[#0A0A0A] shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
               aria-label={t.label}
             >
-              <span className="text-[15px] leading-none">{t.emoji}</span>
-              {active && <span className="text-[12px] font-semibold tracking-tight animate-slide-in">{t.label}</span>}
+              <span className="text-[14px] leading-none">{t.emoji}</span>
+              <span className="text-[9px] font-semibold tracking-wide uppercase">{t.label}</span>
             </Link>
           );
         })}
