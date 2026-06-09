@@ -32,6 +32,20 @@ function HistoryPage() {
     return { key: k, date: formatISTDate(k), min, topics, reason };
   }), [days, last7]);
 
+  // Consistency % — habits-logged days out of last 7
+  const consistencyPct = useMemo(() => {
+    if (habits.length === 0) return 0;
+    let totalSlots = 0, doneSlots = 0;
+    for (const k of last7) {
+      const d = days[k];
+      for (const h of habits) {
+        totalSlots++;
+        if (d?.habits[h.id]?.done) doneSlots++;
+      }
+    }
+    return totalSlots ? Math.round((doneSlots / totalSlots) * 100) : 0;
+  }, [days, habits, last7]);
+
   // AI Insights
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
