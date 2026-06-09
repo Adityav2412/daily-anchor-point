@@ -1,54 +1,73 @@
-## Goal
-Make the app gentler and more useful for Akshay. Fix carry-forward & history bugs, add Morning Intention / Tough Day / Pomodoro / Night Setup / Weekly Report, and simplify Plan tab — all within existing tabs, fonts, colors, and layout.
+# Daily — Full Redesign & Fix Plan
 
-## Bug fixes
-1. **IST date consistency** — audit `src/lib/store.ts` and `src/lib/ist.ts`. Ensure every day-key write uses `istDateKey()` (no `new Date().toISOString().slice(0,10)` UTC slips). Backfill any legacy entries on load.
-2. **Stats historical data** — `src/routes/history.tsx` filters by `startKey`. Make sure `dataStartKey` is set on first ever open (not reset on new sessions), and that day records persist (already using zustand `persist`). Verify entries from prior days surface in Study/Energy sections.
-3. **Daily log clarity** — in History "Daily log" expanded view, list each habit with ✓ (done) / ✗ missed (reason if any) / ○ not logged, instead of mixing ✓/○.
-4. **Plan carry-forward** — when Study tab loads on day N, if `days[N].study.tomorrowPlan` is empty AND `days[N-1].study.tomorrowPlan` exists, surface that as **"Today's plan"** banner at top of Study tab (read-only, with a "Done with this" dismiss). Uses IST yesterday key.
+Scope: visual overhaul + behavior cleanup across all tabs. No user data deleted (localStorage store preserved & migrated).
 
-## New features (fit into existing tabs)
+## 1. Design system (`src/styles.css`, `index.html`)
+- Swap Fraunces → **Playfair Display** (Google Fonts) for `--font-display`. Keep Manrope for body.
+- Dark (default): bg `#0A0A0A`, card `#1A1A1A`, accent amber `#F5A623`, text `#F5F5F2`.
+- Light: bg `#F8F6F2`, card `#FFFFFF`, accent amber `#F5A623`.
+- Card radius 20px+, soft shadows, generous spacing.
+- Micro-animations: card tap scale, habit tick bounce + amber fill, tab slide.
 
-### Today tab (`src/routes/index.tsx`)
-- **Morning Intention card** — shown only if `today.intention` not yet set. Three inline inputs (study goal text, energy 1–5 pills, priority habit select from `habits`). "Good morning, Akshay. Set your intention." Saves to `today.intention = { goal, energy, habitId, setAt }`. Card hides after save; replaced by a tiny one-line summary chip ("Intention set ✓ — view") that expands.
-- **Tough day button** — small subtle text-button under reflection. Opens inline gentle card: message + optional "What happened?" textarea. Saves to `today.toughDay = { note, at }`. No streak language anywhere.
-- **Night Setup card** — appears only after 20:00 IST AND if not yet filled. Three fields: up to 3 tomorrow tasks (add to tomorrow's `tasksToday`), study plan text (writes to today's `study.tomorrowPlan`), sleep time intention (HH:MM). Label "Wind down, Akshay. Plan tomorrow in 2 minutes."
+## 2. Shell (`AppShell`, `BottomNav`)
+- Keep theme toggle top-right (already there).
+- Bottom nav: pill bar, icon + label always visible, active = amber pill background.
+- Greeting moved into Today tab (not header).
 
-### Study tab (`src/routes/study.tsx`)
-- **Today's plan banner** at top when carried forward (see bug #4).
-- **Pomodoro card** — 25:00 countdown, Start / Pause / Reset. On finish: toast "Take a 5 min break." (sonner) + soft beep optional. Local state only.
+## 3. Today tab (`routes/index.tsx`)
+- Big greeting "Good Morning, Akshay 👋" (IST-based) + today's date.
+- Encouraging dynamic message card ("2 habits done today 🌱", streak badges).
+- Habit summary: circular progress (e.g. 1/2), tap to expand list.
+- Tasks card (today only, with Today/Tomorrow toggle on add + optional reminder time).
+- Win of day — single line input.
+- Bad day button — subtle at bottom.
+- Night setup card — only after 20:00 IST: "Plan tomorrow — 2 mins".
 
-### Plan tab (`src/routes/planner.tsx`) — full rewrite, simpler
-- Remove existing block system entirely.
-- **Time log entry**: activity text + start time + end time → appended to `today.timeLog: { activity, start, end }[]`.
-- **End-of-day summary** — grouped totals per activity (hh mm).
-- **Weekly view** — simple text list: for each of last 7 IST days, list activity → hours. No charts.
+## 4. Habits tab (`routes/habits.tsx`)
+- Per habit: name + ✓ tick + ✗ cross.
+- Tick = mark done (bounce animation).
+- Cross = popup → reason text → save as missed with reason.
+- Auto carry-forward (already in store).
 
-### Stats tab (`src/routes/history.tsx`)
-- **Weekly Report card** at top, visible only on Sunday IST. Shows: total study hours this week, habits completion rate, average energy, "This week's win" (most recent non-empty `study.win` from week).
-- **Daily log** entries updated per bug #3.
-- Remove "Symptom log" — confirmed none exists currently, nothing to remove.
+## 5. Study tab (`routes/study.tsx`)
+- TOP: **TODAY'S PLAN** — from yesterday's "Plan for Tomorrow". Checkbox each item. Unchecked items roll over at midnight IST tagged "📌 Backlog".
+- Remove studied Yes/No toggle, remove timer.
+- Manual log: "What did you study?" + duration (h/m) → saved with IST date.
+- Bottom: "Plan for Tomorrow" textarea (one item per line).
 
-## Store changes (`src/lib/store.ts`)
-Extend `DayState`:
-```ts
-intention?: { goal: string; energy: number; habitId?: string; setAt: string }
-toughDay?: { note?: string; at: string }
-nightSetup?: { sleepIntention?: string; at: string }
-timeLog: { activity: string; start: string; end: string }[]   // default []
-```
-Add actions: `setIntention`, `logToughDay`, `setNightSetup`, `addTimeLog`, `removeTimeLog`, `carryPlanForward()` helper (reads yesterday's `tomorrowPlan`).
-Keep all existing actions/types unchanged for back-compat (older persisted state hydrates with sensible defaults).
+## 6. Time tab (`routes/planner.tsx`)
+- Study only. Manual entry: date (default today) + topic + start + end → computes duration.
+- History list "Jun 7 — Polity (2h 30m)".
+- Weekly summary: total + most productive weekday. Simple per-day bar.
 
-## Tone pass
-Grep for negative words ("broken", "failed", "missed streak") — none exist, but ensure new copy follows gentle voice (no streaks, no red error styling for missed habits).
+## 7. Stats tab (`routes/history.tsx`)
+- Habits section: per day row → ✓ done / ✗ missed (with reason).
+- Study section: per day → "Studied (1h 30m, Polity)" or "Not studied".
+- Remove time-tracker block.
+- **AI Insights**: Gemini fetch w/ `gemini-2.0-flash`, fallback `gemini-1.5-flash-latest`. Button "Get Akshay's weekly analysis", sends last 7 days habits+study JSON. Shows clear error if key missing or call fails.
 
-## Files touched
-- `src/lib/store.ts` (extend types + actions)
-- `src/lib/ist.ts` (add `istYesterdayKey`, `istNow` helpers if missing)
-- `src/routes/index.tsx` (Morning Intention, Tough Day, Night Setup)
-- `src/routes/study.tsx` (carry-forward banner, Pomodoro)
-- `src/routes/planner.tsx` (full rewrite to simple time log)
-- `src/routes/history.tsx` (Weekly Report on Sundays, clearer daily log)
+## 8. Calendar tab (`routes/calendar.tsx`)
+- Add event: name + date + note.
+- List sorted by date. Days remaining badge ("tomorrow", "in 3 days", "today!").
+- Color: red ≤3d, amber ≤7d, green >7d, gray "✓ Passed".
 
-No UI tokens, fonts, or layout system changes. No new tabs. No new dependencies.
+## 9. Reminders / notifications
+- Remove "tap to copy URL" / install prompt banners (already suppressed; double-check `main.tsx`).
+- Task reminder: optional time picker → schedules `Notification` at that time; if permission denied, fires in-app banner via existing `daily:in-app-alert` event.
+
+## 10. Store (`src/lib/store.ts`)
+- Add `events: {id,name,date,note}[]`.
+- Add `studyLogs: {date, topic, minutes}[]` (replace/augment current study time entries).
+- Add backlog flag to plan items.
+- Migration leaves existing keys intact.
+
+## Technical notes
+- Gemini key: read `import.meta.env.VITE_GEMINI_API_KEY`. If missing, show inline error in AI Insights card (no silent fail). User must set in Vercel env.
+- All dates via existing `src/lib/ist.ts`.
+- Keep TanStack Router file routes; no new routes needed.
+
+## Out of scope
+- No backend/Cloud (all localStorage, per current app).
+- No data migration loss.
+
+Confirm to proceed and I'll implement in one pass.

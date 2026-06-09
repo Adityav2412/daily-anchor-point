@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, store, detectStudyTask } from "@/lib/store";
-import { istDateKey, lastNDays, formatISTDate, nowIST, istGreeting } from "@/lib/ist";
+import { istDateKey, lastNDays, nowIST, istGreeting } from "@/lib/ist";
 import { Plus, X, Flame, Bell, BellOff } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -26,10 +26,13 @@ function TodayPage() {
   const today = useToday();
   const habits = useStore((s) => s.habits);
   const allDays = useStore((s) => s.days);
-  const todayKey = istDateKey();
-  const days = lastNDays(7);
   const [greeting, setGreeting] = useState("");
-  useEffect(() => { setGreeting(istGreeting("Akshay")); }, []);
+  const [longDate, setLongDate] = useState("");
+  useEffect(() => {
+    setGreeting(istGreeting("Akshay"));
+    const d = nowIST();
+    setLongDate(d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }));
+  }, []);
 
   // Task input
   const [taskTitle, setTaskTitle] = useState("");
@@ -44,6 +47,9 @@ function TodayPage() {
     const p = await Notification.requestPermission();
     setPerm(p);
   };
+
+  // Win
+  const [winDraft, setWinDraft] = useState(today.study.win ?? "");
 
   // Tough day
   const [toughOpen, setToughOpen] = useState(false);
@@ -64,10 +70,32 @@ function TodayPage() {
   const [nSleep, setNSleep] = useState("23:00");
 
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
-  const habitPct = habits.length ? Math.round((habitDone / habits.length) * 100) : 0;
-  const loggedCount = Object.keys(allDays).length;
   const taskDone = today.tasksToday.filter((t) => t.done).length;
   const highOpen = today.tasksToday.filter((t) => t.priority === "high" && !t.done).length;
+
+  // Streak: consecutive days with at least 1 habit done
+  const streak = useMemo(() => {
+    const keys = lastNDays(30).slice().reverse();
+    let s = 0;
+    for (const k of keys) {
+      const d = allDays[k];
+      const any = d && habits.some((h) => d.habits[h.id]?.done);
+      if (any) s++;
+      else if (k !== istDateKey()) break;
+      else continue;
+    }
+    return s;
+  }, [allDays, habits]);
+
+  const encouragement = useMemo(() => {
+    if (habitDone >= habits.length && habits.length > 0) return `All habits done today, Akshay 🌱`;
+    if (habitDone > 0) return `${habitDone} habit${habitDone === 1 ? "" : "s"} done today, Akshay 🌱`;
+    if (streak >= 3) return `${streak}-day streak — keep going ✨`;
+    return `Be gentle with yourself today.`;
+  }, [habitDone, habits.length, streak]);
+
+  // Circular progress for habits
+  const habitPct = habits.length ? habitDone / habits.length : 0;
 
   const addTask = () => {
     if (!taskTitle.trim()) return;
@@ -86,62 +114,36 @@ function TodayPage() {
     <AppShell title="Today">
       <div className="space-y-4 stagger">
         {/* Greeting */}
-        <div suppressHydrationWarning className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground font-medium px-1">
-          {greeting || "\u00a0"}
-        </div>
-
-        {/* Days logged */}
-        <div className="card-sky rounded-[28px] p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <span className="text-2xl animate-flicker">🌿</span>
-              <div className="font-display text-[22px] tracking-tight">
-                {loggedCount} {loggedCount === 1 ? "day" : "days"} logged
-              </div>
-            </div>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-foreground/55">gentle</span>
-          </div>
-          <div className="flex items-end justify-between gap-1.5">
-            {days.map((k) => {
-              const d = allDays[k];
-              const isToday = k === todayKey;
-              const any = !!d && (Object.keys(d.habits).length || (d.study.sessions?.length ?? 0) || d.study.entries.length || d.tasksToday.length);
-              return (
-                <div key={k} className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className="text-[10px] text-foreground/55 font-medium tabular-nums">{formatISTDate(k)}</div>
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center text-base transition ${isToday ? "ring-ink bg-background" : ""}`}>
-                    {any ? "🌿" : isToday ? "" : "·"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div className="card-paper p-5">
+          <p className="font-display text-[28px] leading-tight tracking-tight">
+            {greeting || "Hello, Akshay"} <span className="inline-block">👋</span>
+          </p>
+          <p suppressHydrationWarning className="text-xs text-muted-foreground mt-1">{longDate}</p>
+          <p className="text-sm text-amber mt-3 font-medium">{encouragement}</p>
         </div>
 
         {/* Habits + tasks summary */}
         <div className="grid grid-cols-5 gap-3">
-          <div className="col-span-3 card-paper rounded-[24px] p-5 hover-lift">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Habits today</div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-display text-5xl leading-none">{habitPct}</span>
-              <span className="text-muted-foreground">%</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">{habitDone} of {habits.length} done</div>
-            <div className="mt-4 h-1.5 w-full rounded-full bg-foreground/10 overflow-hidden">
-              <div className="h-full bg-foreground transition-all duration-700" style={{ width: `${habitPct}%` }} />
+          <div className="col-span-3 card-paper p-5 hover-lift">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Habits today</div>
+            <div className="flex items-center gap-4">
+              <CircularProgress pct={habitPct} />
+              <div>
+                <div className="font-display text-3xl leading-none">{habitDone}<span className="text-muted-foreground text-xl">/{habits.length}</span></div>
+                <div className="text-[11px] text-muted-foreground mt-1">done</div>
+              </div>
             </div>
           </div>
-          <div className={`col-span-2 rounded-[24px] p-5 hover-lift ${highOpen > 0 ? "card-blush" : "card-mint"}`}>
+          <div className={`col-span-2 p-5 hover-lift ${highOpen > 0 ? "card-blush" : "card-amber"}`}>
             <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Tasks</div>
-            <div className="mt-3 font-display text-5xl leading-none">
-              {taskDone}<span className="text-muted-foreground text-2xl">/{today.tasksToday.length}</span>
+            <div className="mt-3 font-display text-4xl leading-none">
+              {taskDone}<span className="text-foreground/50 text-xl">/{today.tasksToday.length}</span>
             </div>
-            <div className="text-xs text-foreground/60 mt-1">
+            <div className="text-[11px] text-foreground/60 mt-1">
               {highOpen > 0 ? `${highOpen} high priority` : "all clear"}
             </div>
           </div>
         </div>
-
 
         {/* Tasks */}
         <section>
@@ -151,12 +153,12 @@ function TodayPage() {
           </header>
 
           {perm !== "granted" && perm !== "unknown" && (
-            <button onClick={requestPerm} className="w-full card-sky rounded-2xl p-3 text-sm text-left flex items-center gap-2 press mb-2">
+            <button onClick={requestPerm} className="w-full card-sky p-3 text-sm text-left flex items-center gap-2 press mb-2">
               <Bell size={14} /> Enable notifications for reminders
             </button>
           )}
 
-          <div className="card-paper rounded-[24px] p-4 space-y-2 mb-3">
+          <div className="card-paper p-4 space-y-2 mb-3">
             <div className="flex gap-2">
               <input
                 value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
@@ -165,12 +167,12 @@ function TodayPage() {
                 className="flex-1 rounded-full bg-muted px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
               />
               <button onClick={() => setTaskHigh(!taskHigh)} className={`rounded-full px-3 press transition ${taskHigh ? "bg-destructive text-destructive-foreground" : "bg-muted"}`} title="High priority"><Flame size={14} /></button>
-              <button onClick={addTask} className="rounded-full bg-foreground text-background px-4 press"><Plus size={14} /></button>
+              <button onClick={addTask} className="rounded-full bg-amber text-[#0A0A0A] px-4 press"><Plus size={14} /></button>
             </div>
             <div className="flex items-center gap-2 px-1">
               <div className="flex rounded-full bg-muted p-0.5">
-                <button onClick={() => setTaskScope("today")} className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full press ${taskScope === "today" ? "bg-foreground text-background" : "text-foreground/60"}`}>Today</button>
-                <button onClick={() => setTaskScope("tomorrow")} className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full press ${taskScope === "tomorrow" ? "bg-foreground text-background" : "text-foreground/60"}`}>Tomorrow</button>
+                <button onClick={() => setTaskScope("today")} className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full press ${taskScope === "today" ? "bg-amber text-[#0A0A0A]" : "text-foreground/60"}`}>Today</button>
+                <button onClick={() => setTaskScope("tomorrow")} className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full press ${taskScope === "tomorrow" ? "bg-amber text-[#0A0A0A]" : "text-foreground/60"}`}>Tomorrow</button>
               </div>
               {taskScope === "today" && (
                 <>
@@ -198,22 +200,22 @@ function TodayPage() {
 
           <div className="space-y-2.5 stagger">
             {today.tasksToday.length === 0 ? (
-              <div className="card-paper rounded-2xl py-6 text-center text-sm text-muted-foreground italic">Nothing here. That's okay.</div>
+              <div className="card-paper py-6 text-center text-sm text-muted-foreground italic">Nothing here. That's okay.</div>
             ) : (
               today.tasksToday.map((t) => (
-                <div key={t.id} className={`rounded-2xl ${t.priority === "high" ? "card-blush" : "card-paper"}`}>
+                <div key={t.id} className={`${t.priority === "high" ? "card-blush" : "card-paper"}`}>
                   <div className="w-full flex items-center gap-3 p-4">
                     <button onClick={() => actions.toggleTask("today", t.id)}
-                      className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[12px] transition shrink-0 press ${t.done ? "bg-foreground border-foreground text-background" : "border-foreground/30"}`}>
-                      {t.done && "✓"}
+                      className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[12px] transition shrink-0 press ${t.done ? "bg-amber border-amber text-[#0A0A0A]" : "border-foreground/30"}`}>
+                      {t.done && <span className="animate-tick">✓</span>}
                     </button>
                     <span className={`flex-1 text-[15px] ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</span>
-                    {t.priority === "high" && <span className="text-[10px] uppercase tracking-wider text-destructive font-bold">🔥 High</span>}
+                    {t.priority === "high" && <span className="text-[10px] uppercase tracking-wider text-destructive font-bold">🔥</span>}
                     <button onClick={() => actions.removeTask("today", t.id)} className="text-foreground/30 hover:text-foreground transition press"><X size={14} /></button>
                   </div>
                   <div className="px-4 pb-3 -mt-1 flex items-center gap-2 text-[11px]">
                     {t.remindAt ? (
-                      <button onClick={() => setEditingReminder(editingReminder === t.id ? null : t.id)} className="flex items-center gap-1 text-foreground/70 press">
+                      <button onClick={() => setEditingReminder(editingReminder === t.id ? null : t.id)} className="flex items-center gap-1 text-amber press">
                         <Bell size={11} /> {formatReminder(t.remindAt)}
                       </button>
                     ) : (
@@ -241,6 +243,18 @@ function TodayPage() {
           </div>
         </section>
 
+        {/* Win of the day */}
+        <div className="card-paper p-4">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Win of the day</div>
+          <input
+            value={winDraft}
+            onChange={(e) => setWinDraft(e.target.value)}
+            onBlur={() => actions.setStudy({ win: winDraft.trim() || undefined })}
+            placeholder="One small thing that went right…"
+            className="w-full rounded-full bg-muted px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
+          />
+        </div>
+
         {/* Tough day */}
         {!toughLogged ? (
           !toughOpen ? (
@@ -248,8 +262,8 @@ function TodayPage() {
               Bad day?
             </button>
           ) : (
-            <div className="card-paper rounded-[24px] p-5 animate-fade-up">
-              <p className="font-display text-lg tracking-tight">That's okay<span className="italic font-light text-muted-foreground">.</span></p>
+            <div className="card-paper p-5 animate-fade-up">
+              <p className="font-display text-lg tracking-tight">That's okay.</p>
               <p className="text-sm text-foreground/65 mt-1">Rest is part of the process.</p>
               <textarea
                 value={toughNote}
@@ -270,9 +284,9 @@ function TodayPage() {
 
         {/* Night setup */}
         {isEvening && !nightDone && (
-          <div className="card-lavender rounded-[24px] p-5">
+          <div className="card-lavender p-5">
             <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Wind down</div>
-            <p className="font-display text-xl tracking-tight mb-3">Plan tomorrow in 2 minutes<span className="italic font-light text-muted-foreground">.</span></p>
+            <p className="font-display text-xl tracking-tight mb-3">Plan tomorrow — 2 mins</p>
             <div className="space-y-2 mb-3">
               {([
                 [nTask1, setNTask1, nStudy1, setNStudy1, 1],
@@ -287,9 +301,8 @@ function TodayPage() {
                     {val.trim() && (
                       <div className="flex items-center gap-2 px-2">
                         <span className="text-[10px] uppercase tracking-wider text-foreground/50">Study task?</span>
-                        <button type="button" onClick={() => (setStudy as (v: boolean) => void)(true)} className={`text-[10px] px-2 py-0.5 rounded-full press ${isStudy ? "bg-foreground text-background" : "bg-background/60 text-foreground/60"}`}>Yes</button>
-                        <button type="button" onClick={() => (setStudy as (v: boolean) => void)(false)} className={`text-[10px] px-2 py-0.5 rounded-full press ${!isStudy ? "bg-foreground text-background" : "bg-background/60 text-foreground/60"}`}>No</button>
-                        {study === null && auto && <span className="text-[10px] italic text-foreground/40">auto-detected</span>}
+                        <button type="button" onClick={() => (setStudy as (v: boolean) => void)(true)} className={`text-[10px] px-2 py-0.5 rounded-full press ${isStudy ? "bg-amber text-[#0A0A0A]" : "bg-background/60 text-foreground/60"}`}>Yes</button>
+                        <button type="button" onClick={() => (setStudy as (v: boolean) => void)(false)} className={`text-[10px] px-2 py-0.5 rounded-full press ${!isStudy ? "bg-amber text-[#0A0A0A]" : "bg-background/60 text-foreground/60"}`}>No</button>
                       </div>
                     )}
                   </div>
@@ -322,11 +335,31 @@ function TodayPage() {
                 if (nPlan.trim()) actions.setStudy({ tomorrowPlan: nPlan.trim() });
                 actions.setNightSetup(nSleep);
               }}
-              className="w-full rounded-full bg-foreground text-background py-2.5 text-sm press"
-            >Save & rest</button>
+              className="w-full rounded-full bg-foreground text-background py-2.5 text-sm font-medium press"
+            >Save & wind down</button>
           </div>
         )}
       </div>
     </AppShell>
+  );
+}
+
+function CircularProgress({ pct }: { pct: number }) {
+  const size = 64;
+  const stroke = 6;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = c * Math.min(1, Math.max(0, pct));
+  return (
+    <svg width={size} height={size}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={stroke} />
+      <circle
+        cx={size/2} cy={size/2} r={r} fill="none"
+        stroke="var(--amber)" strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={`${dash} ${c}`}
+        transform={`rotate(-90 ${size/2} ${size/2})`}
+        style={{ transition: "stroke-dasharray 0.7s ease" }}
+      />
+    </svg>
   );
 }
