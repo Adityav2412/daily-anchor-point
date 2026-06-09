@@ -31,6 +31,7 @@ function HabitsPage() {
   return (
     <AppShell title="Habits">
       <div className="space-y-4 stagger">
+        <div className="flex justify-center -mt-2 mb-1"><HabitsPlant className="h-20 w-20" /></div>
         <div className="flex gap-2">
           <Tab active={tab === "non-negotiable"} onClick={() => setTab("non-negotiable")}>Non-Negotiable</Tab>
           <Tab active={tab === "adapting"} onClick={() => setTab("adapting")}>Trying to Adapt</Tab>
