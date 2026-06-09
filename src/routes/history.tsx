@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { useStore, studyMinutesFor } from "@/lib/store";
 import { formatISTDate, lastNDays, formatHM } from "@/lib/ist";
 import { Sparkles } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Stats — daily." }] }),
@@ -14,57 +15,69 @@ function HistoryPage() {
   const habits = useStore((s) => s.habits);
   const days = useStore((s) => s.days);
 
+  const [studyRange, setStudyRange] = useState<7 | 30>(7);
+
   const last7 = useMemo(() => lastNDays(7), []);
+  const studyDays = useMemo(() => lastNDays(studyRange), [studyRange]);
 
-  const habitRows = useMemo(() => last7.slice().reverse().map((k) => {
-    const d = days[k];
-    const done = habits.filter((h) => d?.habits[h.id]?.done);
-    const missed = habits.filter((h) => d?.habits[h.id] && !d.habits[h.id].done)
-      .map((h) => ({ name: h.name, reason: d!.habits[h.id].reason }));
-    return { key: k, date: formatISTDate(k), done: done.map((h) => h.name), missed };
-  }), [days, habits, last7]);
+  // ===== Habits grid (rows = habit, columns = last 7 days, oldest → newest) =====
+  const habitGridDays = useMemo(() => last7.slice().reverse(), [last7]); // oldest first
+  const dayShort = (k: string) => {
+    // k = "YYYY-MM-DD"
+    const [, , d] = k.split("-");
+    return d;
+  };
 
-  const studyRows = useMemo(() => last7.slice().reverse().map((k) => {
-    const d = days[k];
-    const min = studyMinutesFor(d);
-    const topics = Array.from(new Set((d?.study.sessions ?? []).map((s) => s.subject))).slice(0, 3).join(", ");
-    const reason = d?.study.notStudiedReason;
-    return { key: k, date: formatISTDate(k), min, topics, reason };
-  }), [days, last7]);
+  // Completion % per habit over last 7 days
+  const habitPct = (habitId: string) => {
+    let done = 0;
+    for (const k of last7) if (days[k]?.habits[habitId]?.done) done++;
+    return Math.round((done / 7) * 100);
+  };
 
-  // Consistency % — habits-logged days out of last 7
+  // Consistency %
   const consistencyPct = useMemo(() => {
     if (habits.length === 0) return 0;
     let totalSlots = 0, doneSlots = 0;
     for (const k of last7) {
-      const d = days[k];
       for (const h of habits) {
         totalSlots++;
-        if (d?.habits[h.id]?.done) doneSlots++;
+        if (days[k]?.habits[h.id]?.done) doneSlots++;
       }
     }
     return totalSlots ? Math.round((doneSlots / totalSlots) * 100) : 0;
   }, [days, habits, last7]);
 
-  // AI Insights
+  // ===== Study bar chart data =====
+  const studyBars = useMemo(() => {
+    return studyDays.slice().reverse().map((k) => {
+      const d = days[k];
+      const min = studyMinutesFor(d);
+      const hours = +(min / 60).toFixed(2);
+      const topics = Array.from(new Set((d?.study.sessions ?? []).map((s) => s.subject)));
+      const topic = topics[0] ?? "";
+      const [, m, day] = k.split("-");
+      const label = `${day}/${m}`;
+      return { key: k, hours, min, topic, label };
+    });
+  }, [days, studyDays]);
+
+  const maxHours = Math.max(1, ...studyBars.map((b) => b.hours));
+
+  // ===== AI Insights (unchanged) =====
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
   const runInsights = async () => {
-    setAiLoading(true);
-    setAiError(null);
-    setAiResult(null);
+    setAiLoading(true); setAiError(null); setAiResult(null);
     try {
       const env = (import.meta as any).env ?? {};
       const apiKey: string | undefined = env.VITE_GEMINI_API_KEY;
-      console.log("[AI Insights] VITE_GEMINI_API_KEY present:", !!apiKey, "length:", apiKey?.length ?? 0);
       if (!apiKey || apiKey.trim() === "") {
         setAiError("VITE_GEMINI_API_KEY is missing. Add it in Vercel → Project → Settings → Environment Variables, then redeploy.");
-        setAiLoading(false);
-        return;
+        setAiLoading(false); return;
       }
-
       const summary = last7.map((k) => {
         const d = days[k];
         if (!d) return { date: k, empty: true };
@@ -77,42 +90,25 @@ function HistoryPage() {
           toughDay: !!d.toughDay,
         };
       });
-
       const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English mixed language. Be encouraging, never shame. Data: ${JSON.stringify(summary)}`;
-
       const callModel = async (model: string) => fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
       );
-
       let res = await callModel("gemini-2.0-flash");
-      if (!res.ok) {
-        console.warn("[AI Insights] gemini-2.0-flash failed, trying gemini-1.5-flash-latest");
-        res = await callModel("gemini-1.5-flash-latest");
-      }
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
-      }
+      if (!res.ok) res = await callModel("gemini-1.5-flash-latest");
+      if (!res.ok) { const t = await res.text(); throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`); }
       const json = await res.json();
-      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "No insights returned.";
-      setAiResult(text);
+      setAiResult(json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "No insights returned.");
     } catch (e: any) {
       setAiError(e?.message ?? "Something went wrong. Try again later.");
-    } finally {
-      setAiLoading(false);
-    }
+    } finally { setAiLoading(false); }
   };
 
   return (
     <AppShell title="Stats">
       <div className="space-y-4 stagger">
-        {/* Habits per day */}
-        {/* Consistency % */}
+        {/* Consistency */}
         <div className="card-amber p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">Consistency · last 7 days</div>
           <div className="flex items-baseline gap-2">
@@ -123,57 +119,104 @@ function HistoryPage() {
           </div>
         </div>
 
+        {/* Habits grid */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
             <h2 className="font-display text-2xl tracking-tight">Habits</h2>
             <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">last 7</span>
           </header>
-          <div className="space-y-2 stagger">
-            {habitRows.map((r) => (
-              <div key={r.key} className="card-paper p-4">
-                <div className="flex items-baseline justify-between mb-2">
-                  <span className="font-display text-base">{r.date}</span>
-                  <span className="text-[11px] text-muted-foreground tabular-nums">{r.done.length} done · {r.missed.length} missed</span>
+          <div className="card-paper p-4">
+            {habits.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No habits yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {/* Column headers */}
+                <div className="grid items-center gap-2" style={{ gridTemplateColumns: "minmax(0,1fr) repeat(7, 22px) 44px" }}>
+                  <div />
+                  {habitGridDays.map((k) => (
+                    <div key={k} className="text-[10px] text-center text-muted-foreground tabular-nums">{dayShort(k)}</div>
+                  ))}
+                  <div className="text-[10px] text-right text-muted-foreground">%</div>
                 </div>
-                {r.done.length === 0 && r.missed.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">Nothing logged.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {r.done.map((n, i) => (
-                      <p key={"d" + i} className="text-xs text-foreground/85"><span className="text-amber font-semibold">✓</span> {n}</p>
-                    ))}
-                    {r.missed.map((m, i) => (
-                      <p key={"m" + i} className="text-xs text-foreground/75"><span className="text-destructive font-semibold">✗</span> {m.name}{m.reason ? <span className="italic text-foreground/55"> — {m.reason}</span> : ""}</p>
-                    ))}
-                  </div>
-                )}
+                {/* Rows */}
+                {habits.map((h) => {
+                  const pct = habitPct(h.id);
+                  return (
+                    <div key={h.id} className="grid items-center gap-2" style={{ gridTemplateColumns: "minmax(0,1fr) repeat(7, 22px) 44px" }}>
+                      <div className="text-sm truncate pr-2">{h.name}</div>
+                      {habitGridDays.map((k) => {
+                        const log = days[k]?.habits[h.id];
+                        if (!log) {
+                          return <div key={k} className="mx-auto h-3 w-3 rounded-full bg-foreground/15" title="not logged" />;
+                        }
+                        if (log.done) {
+                          return <div key={k} className="mx-auto h-3 w-3 rounded-full bg-emerald-500" title="done" />;
+                        }
+                        return (
+                          <Popover key={k}>
+                            <PopoverTrigger asChild>
+                              <button className="mx-auto h-3 w-3 rounded-full bg-red-500 press" aria-label="missed — tap for reason" />
+                            </PopoverTrigger>
+                            <PopoverContent className="w-56 p-3">
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{formatISTDate(k)}</div>
+                              <div className="text-sm font-medium mb-1">{h.name} · missed</div>
+                              <div className="text-xs text-foreground/75">{log.reason ? log.reason : <span className="italic text-foreground/55">No reason noted.</span>}</div>
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })}
+                      <div className="text-[11px] text-right tabular-nums text-amber font-semibold">{pct}%</div>
+                    </div>
+                  );
+                })}
+                {/* Legend */}
+                <div className="flex items-center gap-3 pt-2 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> done</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> missed</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-foreground/15" /> not logged</span>
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </section>
 
-        {/* Study per day */}
+        {/* Study bar chart */}
         <section>
           <header className="flex items-baseline justify-between px-1 mb-3 mt-2">
             <h2 className="font-display text-2xl tracking-tight">Study</h2>
-            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">last 7</span>
+            <div className="inline-flex rounded-full bg-foreground/5 p-0.5 text-[11px]">
+              <button onClick={() => setStudyRange(7)} className={`px-2.5 py-1 rounded-full ${studyRange === 7 ? "bg-foreground text-background" : "text-muted-foreground"}`}>7d</button>
+              <button onClick={() => setStudyRange(30)} className={`px-2.5 py-1 rounded-full ${studyRange === 30 ? "bg-foreground text-background" : "text-muted-foreground"}`}>30d</button>
+            </div>
           </header>
-          <div className="space-y-2 stagger">
-            {studyRows.map((r) => (
-              <div key={r.key} className="card-paper p-3 flex items-center gap-3">
-                <span className="text-xs tabular-nums w-14 text-muted-foreground">{r.date}</span>
-                {r.min > 0 ? (
-                  <>
-                    <span className="flex-1 text-sm">Studied {r.topics && <span className="text-foreground/65">({r.topics})</span>}</span>
-                    <span className="text-xs tabular-nums text-amber font-semibold">{formatHM(r.min)}</span>
-                  </>
-                ) : (
-                  <span className="flex-1 text-sm text-muted-foreground italic">
-                    Not studied{r.reason ? ` — ${r.reason}` : ""}
-                  </span>
-                )}
-              </div>
-            ))}
+          <div className="card-paper p-4">
+            <div className="flex items-end gap-1.5 h-40">
+              {studyBars.map((b) => {
+                const isRest = b.min === 0;
+                const h = isRest ? 4 : Math.max(6, Math.round((b.hours / maxHours) * 140));
+                return (
+                  <div key={b.key} className="flex-1 flex flex-col items-center justify-end min-w-0">
+                    {!isRest && (
+                      <div className="text-[9px] tabular-nums text-amber font-semibold mb-1">{b.hours}h</div>
+                    )}
+                    <div
+                      className={`w-full rounded-t-md ${isRest ? "bg-foreground/10" : "bg-amber"}`}
+                      style={{ height: `${h}px` }}
+                      title={isRest ? "Rest" : `${formatHM(b.min)}${b.topic ? " · " + b.topic : ""}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {/* X axis labels: date + topic / Rest */}
+            <div className="flex gap-1.5 mt-2">
+              {studyBars.map((b) => (
+                <div key={b.key} className="flex-1 min-w-0 text-center">
+                  <div className="text-[9px] tabular-nums text-muted-foreground">{b.label}</div>
+                  <div className="text-[9px] truncate text-foreground/70">{b.min === 0 ? "Rest" : (b.topic || "—")}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
