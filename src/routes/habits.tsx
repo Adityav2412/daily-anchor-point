@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, type HabitCategory } from "@/lib/store";
+import { lastNDays } from "@/lib/ist";
 import { Plus, X, Check } from "lucide-react";
 
 export const Route = createFileRoute("/habits")({
@@ -9,9 +10,16 @@ export const Route = createFileRoute("/habits")({
   component: HabitsPage,
 });
 
+function emit(title: string, body?: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("daily:in-app-alert", { detail: { title, body } }));
+}
+
 function HabitsPage() {
   const habits = useStore((s) => s.habits);
   const today = useToday();
+  const days = useStore((s) => s.days);
+  const last7 = useMemo(() => lastNDays(7), []);
   const [name, setName] = useState("");
   const [cat, setCat] = useState<HabitCategory>("non-negotiable");
   const [tab, setTab] = useState<HabitCategory>("non-negotiable");
@@ -53,6 +61,7 @@ function HabitsPage() {
             const log = today.habits[h.id];
             const done = !!log?.done;
             const missed = log && !log.done;
+            const week = last7.map((k) => ({ k, done: !!days[k]?.habits[h.id]?.done }));
             return (
               <div key={h.id} className={`p-4 transition ${done ? "card-amber" : missed ? "card-blush" : "card-paper"}`}>
                 <div className="flex items-center gap-3">
@@ -61,9 +70,9 @@ function HabitsPage() {
                     {missed && log?.reason && <p className="text-xs text-muted-foreground italic mt-0.5">"{log.reason}"</p>}
                   </div>
                   <button
-                    onClick={() => actions.toggleHabit(h.id, true)}
+                    onClick={() => { actions.toggleHabit(h.id, true); emit("Done! 🌱", h.name); }}
                     aria-label="Done"
-                    className={`h-9 w-9 rounded-full border-2 flex items-center justify-center press ${done ? "bg-amber border-amber text-[#0A0A0A]" : "border-foreground/25 hover:border-amber"}`}
+                    className={`h-9 w-9 rounded-full border-2 flex items-center justify-center press ${done ? "bg-success border-success text-white" : "border-foreground/25 hover:border-success"}`}
                   >{done && <Check size={16} className="animate-tick" />}</button>
                   <button
                     onClick={() => { setReasonFor(reasonFor === h.id ? null : h.id); setReasonText(log?.reason ?? ""); }}
@@ -71,6 +80,13 @@ function HabitsPage() {
                     className={`h-9 w-9 rounded-full border-2 flex items-center justify-center press ${missed ? "bg-destructive border-destructive text-destructive-foreground" : "border-foreground/25 hover:border-destructive"}`}
                   >{missed ? <X size={16} className="animate-tick" /> : <X size={14} className="opacity-40" />}</button>
                   <button onClick={() => actions.removeHabit(h.id)} className="text-foreground/30 hover:text-foreground transition ml-1"><X size={12} /></button>
+                </div>
+                {/* 7-day consistency dots */}
+                <div className="flex items-center gap-1.5 mt-3">
+                  {week.map((d) => (
+                    <span key={d.k} className={`h-2 w-2 rounded-full ${d.done ? "bg-success" : "bg-foreground/15"}`} />
+                  ))}
+                  <span className="text-[10px] text-muted-foreground ml-1">{week.filter((d) => d.done).length}/7</span>
                 </div>
                 {reasonFor === h.id && (
                   <div className="mt-3 flex gap-2 animate-fade-up">
