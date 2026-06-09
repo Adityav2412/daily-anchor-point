@@ -131,13 +131,53 @@ function TodayPage() {
   return (
     <AppShell title="Today">
       <div className="space-y-4 stagger">
+        {/* Daily Hindi Quote */}
+        <div className="card-amber p-4">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Sparkles size={12} className="text-amber" />
+            <span className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Aaj ka quote</span>
+          </div>
+          <p className="font-display text-[17px] leading-snug text-foreground/90 italic">"{hindiQuote}"</p>
+        </div>
+
         {/* Greeting */}
         <div className="card-paper p-5">
           <p className="font-display text-[28px] leading-tight tracking-tight">
             {greeting || "Hello, Akshay"} <span className="inline-block">👋</span>
           </p>
           <p suppressHydrationWarning className="text-xs text-muted-foreground mt-1">{longDate}</p>
-          <p className="text-sm text-amber mt-3 font-medium">{encouragement}</p>
+          <div className="flex items-center gap-3 mt-3 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber">
+              <Flame size={14} /> {streak} {streak === 1 ? "day" : "days"}
+            </span>
+            <span className="text-sm text-foreground/70">{encouragement}</span>
+          </div>
+        </div>
+
+        {/* Aaj Ka Irada */}
+        <div className="card-mint p-4">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1.5">Aaj ka irada</div>
+          <p className="text-[13px] text-foreground/70 mb-2">Aaj ek cheez pakka karni hai — kya hai?</p>
+          <input
+            value={intentionDraft}
+            onChange={(e) => setIntentionDraft(e.target.value)}
+            onBlur={() => actions.setIntentionText(intentionDraft)}
+            placeholder="One thing I will do today…"
+            className="w-full rounded-full bg-background/70 px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40"
+          />
+        </div>
+
+        {/* 7-day consistency bubbles */}
+        <div className="card-paper p-4">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Last 7 days</div>
+          <div className="flex items-center justify-between gap-2">
+            {consistency.map((c) => (
+              <div key={c.key} className="flex flex-col items-center gap-1.5 flex-1">
+                <div className={`h-7 w-7 rounded-full transition ${c.filled ? "bg-amber" : "bg-muted"} ${c.isToday ? "ring-2 ring-amber ring-offset-2 ring-offset-background" : ""}`} />
+                <span className="text-[9px] text-muted-foreground uppercase">{c.weekday}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Habits + tasks summary */}
