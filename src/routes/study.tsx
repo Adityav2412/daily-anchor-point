@@ -68,6 +68,7 @@ function StudyPage() {
   return (
     <AppShell title="Study">
       <div className="space-y-4 stagger">
+        <div className="flex justify-center -mt-2 mb-1"><StudyBook className="h-16 w-auto" /></div>
         {/* TODAY'S PLAN */}
         <div className="card-amber p-5 animate-fade-up">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-3">Today's plan</div>

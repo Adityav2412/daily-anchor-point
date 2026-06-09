@@ -47,6 +47,7 @@ function TimeTrackerPage() {
   return (
     <AppShell title="Time">
       <div className="space-y-4 stagger">
+        <div className="flex justify-center -mt-2 mb-1"><TimeHourglass className="h-20 w-auto" /></div>
         {/* Summary */}
         <div className="card-amber p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-1">This {range === 7 ? "week" : "month"}</div>

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, type HabitCategory } from "@/lib/store";
 import { lastNDays } from "@/lib/ist";
+import { HabitsPlant } from "@/components/illustrations";
 import { Plus, X, Check } from "lucide-react";
 
 export const Route = createFileRoute("/habits")({

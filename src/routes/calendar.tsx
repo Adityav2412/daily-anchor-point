@@ -69,6 +69,7 @@ function CalendarPage() {
 
   return (
     <AppShell title="Calendar" subtitle="Upcoming, all in IST.">
+      <div className="flex justify-center -mt-2 mb-3"><CalendarCheckIllo className="h-20 w-auto" /></div>
       <section className="rounded-3xl border bg-card p-5 mb-4 animate-pop">
         <div className="flex items-center gap-2 mb-3">
           <CalendarIcon size={16} className="text-muted-foreground" />
