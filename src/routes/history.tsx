@@ -93,35 +93,32 @@ function HistoryPage() {
 
       let resultText = "";
 
+      // Try Gemini first if API key is saved — silently fall back to Pollinations on any failure.
       if (savedApiKey) {
-        // Use Gemini when API key is saved — best quality.
-        const MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
-        let geminiRes: Response | null = null;
-        let lastErr = "";
-        for (const model of MODELS) {
-          geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${savedApiKey}`,
-            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-          );
-          if (geminiRes.ok) break;
-          const et = await geminiRes.text();
-          lastErr = `Gemini ${geminiRes.status} (${model}): ${et.slice(0, 150)}`;
-          geminiRes = null;
-        }
-        if (geminiRes) {
-          const json = await geminiRes.json();
-          resultText = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-        } else {
-          throw new Error(lastErr || "Gemini failed. Check your API key.");
-        }
-      } else {
-        // Pollinations.ai fallback — free, no key needed.
+        try {
+          const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-flash-001"];
+          for (const model of MODELS) {
+            const r = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${savedApiKey}`,
+              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+            );
+            if (r.ok) {
+              const json = await r.json();
+              resultText = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+              if (resultText) break;
+            }
+          }
+        } catch { /* Gemini failed — fall through to Pollinations below */ }
+      }
+
+      // Pollinations.ai — free fallback, always works, no key needed.
+      if (!resultText) {
         const res = await fetch("https://text.pollinations.ai/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [
-              { role: "system", content: "You are a gentle, encouraging life coach who speaks in Hinglish (Hindi + English mix). Be warm, specific, never shame. Give 3-4 bullet insights." },
+              { role: "system", content: "You are a gentle, encouraging life coach who speaks in Hinglish (Hindi + English mix). Be warm, specific, never shame. Give 3-4 bullet point insights." },
               { role: "user", content: prompt },
             ],
             model: "openai",
@@ -129,16 +126,16 @@ function HistoryPage() {
             private: true,
           }),
         });
-        if (!res.ok) { const t = await res.text(); throw new Error(`AI error ${res.status}: ${t.slice(0, 150)}`); }
-        resultText = await res.text();
+        if (res.ok) resultText = await res.text();
       }
 
-      if (!resultText.trim()) throw new Error("No insights returned. Try again.");
+      if (!resultText.trim()) throw new Error("Could not get insights right now. Please try again in a moment.");
       setAiResult(resultText.trim());
     } catch (e: any) {
       setAiError(e?.message ?? "Something went wrong. Try again later.");
     } finally { setAiLoading(false); }
   };
+
 
 
   return (
