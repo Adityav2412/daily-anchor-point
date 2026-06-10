@@ -11,7 +11,7 @@ export function detectStudyTask(title: string): boolean {
   const t = title.toLowerCase();
   return STUDY_KEYWORDS.some((k) => new RegExp(`\\b${k}`, "i").test(t));
 }
-export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; }
+export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; geminiApiKey?: string; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
@@ -412,6 +412,9 @@ export const actions = {
   },
   setSettings(patch: Partial<Settings>) {
     store.set((s) => { s.settings = { eodReminderEnabled: true, eodMinutesBefore: 30, ...(s.settings || {}), ...patch }; return s; });
+  },
+  setGeminiKey(key: string) {
+    store.set((s) => { s.settings = { eodReminderEnabled: true, eodMinutesBefore: 30, ...(s.settings || {}), geminiApiKey: key.trim() || undefined }; return s; });
   },
   markEodNotified(key: string) {
     store.set((s) => { s.eodNotifiedKey = key; return s; });

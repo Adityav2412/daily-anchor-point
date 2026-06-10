@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { useStore, studyMinutesFor } from "@/lib/store";
+import { useStore, studyMinutesFor, actions } from "@/lib/store";
 import { formatISTDate, lastNDays, formatHM } from "@/lib/ist";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Key, ChevronDown, ChevronUp } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { StatsBars, AkshayAvatar } from "@/components/illustrations";
 
@@ -65,10 +65,13 @@ function HistoryPage() {
 
   const maxHours = Math.max(1, ...studyBars.map((b) => b.hours));
 
-  // ===== AI Insights (unchanged) =====
+  // ===== AI Insights =====
+  const savedApiKey = useStore((s) => s.settings?.geminiApiKey ?? "");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
 
   const runInsights = async () => {
     setAiLoading(true); setAiError(null); setAiResult(null);
@@ -88,33 +91,55 @@ function HistoryPage() {
 
       const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English (Hinglish) mixed language. Be warm, encouraging, never shame. Keep it personal and specific to the data. Data: ${JSON.stringify(summary)}`;
 
-      // Pollinations.ai — completely free, no API key needed.
-      const res = await fetch("https://text.pollinations.ai/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [
-            { role: "system", content: "You are a gentle, encouraging life coach who speaks in Hinglish (Hindi + English mix). Be warm, specific, and never shame. Give 3-4 bullet insights." },
-            { role: "user", content: prompt },
-          ],
-          model: "openai",
-          seed: 42,
-          private: true,
-        }),
-      });
+      let resultText = "";
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`AI service error ${res.status}: ${errText.slice(0, 200)}`);
+      if (savedApiKey) {
+        // Use Gemini when API key is saved — best quality.
+        const MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+        let geminiRes: Response | null = null;
+        let lastErr = "";
+        for (const model of MODELS) {
+          geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${savedApiKey}`,
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+          );
+          if (geminiRes.ok) break;
+          const et = await geminiRes.text();
+          lastErr = `Gemini ${geminiRes.status} (${model}): ${et.slice(0, 150)}`;
+          geminiRes = null;
+        }
+        if (geminiRes) {
+          const json = await geminiRes.json();
+          resultText = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        } else {
+          throw new Error(lastErr || "Gemini failed. Check your API key.");
+        }
+      } else {
+        // Pollinations.ai fallback — free, no key needed.
+        const res = await fetch("https://text.pollinations.ai/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: "You are a gentle, encouraging life coach who speaks in Hinglish (Hindi + English mix). Be warm, specific, never shame. Give 3-4 bullet insights." },
+              { role: "user", content: prompt },
+            ],
+            model: "openai",
+            seed: 42,
+            private: true,
+          }),
+        });
+        if (!res.ok) { const t = await res.text(); throw new Error(`AI error ${res.status}: ${t.slice(0, 150)}`); }
+        resultText = await res.text();
       }
 
-      const text = await res.text();
-      if (!text || text.trim() === "") throw new Error("No insights returned. Try again.");
-      setAiResult(text.trim());
+      if (!resultText.trim()) throw new Error("No insights returned. Try again.");
+      setAiResult(resultText.trim());
     } catch (e: any) {
       setAiError(e?.message ?? "Something went wrong. Try again later.");
     } finally { setAiLoading(false); }
   };
+
 
   return (
     <AppShell title="Stats">
@@ -240,8 +265,53 @@ function HistoryPage() {
           <div className="card-amber p-5">
             <div className="flex items-center gap-3 mb-3">
               <AkshayAvatar size={44} />
-              <p className="text-sm text-foreground/75">Akshay's weekly analysis — last 7 days of habits + study sent privately to Gemini.</p>
+              <div className="flex-1">
+                <p className="text-sm text-foreground/75">Akshay's weekly analysis — last 7 days of habits + study.</p>
+                <p className="text-[10px] text-foreground/50 mt-0.5">
+                  {savedApiKey ? "⚡ Using Gemini AI (your key)" : "🆓 Using free AI (Pollinations)"}
+                </p>
+              </div>
             </div>
+
+            {/* Gemini key toggle */}
+            <button
+              onClick={() => { setShowKeyInput(!showKeyInput); setKeyDraft(savedApiKey); }}
+              className="flex items-center gap-1.5 text-[11px] text-foreground/55 mb-3 press"
+            >
+              <Key size={11} />
+              {savedApiKey ? "Change Gemini API key" : "Add Gemini API key (optional, better quality)"}
+              {showKeyInput ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </button>
+
+            {showKeyInput && (
+              <div className="mb-3 space-y-2 animate-fade-up">
+                <input
+                  type="password"
+                  value={keyDraft}
+                  onChange={(e) => setKeyDraft(e.target.value)}
+                  placeholder="Paste your Gemini API key here…"
+                  className="w-full rounded-full bg-background/70 px-4 py-2 text-xs outline-none placeholder:text-foreground/40 font-mono"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { actions.setGeminiKey(keyDraft); setShowKeyInput(false); }}
+                    className="flex-1 rounded-full bg-foreground text-background py-1.5 text-xs press"
+                  >
+                    Save key
+                  </button>
+                  {savedApiKey && (
+                    <button
+                      onClick={() => { actions.setGeminiKey(""); setKeyDraft(""); setShowKeyInput(false); }}
+                      className="flex-1 rounded-full bg-muted text-foreground/60 py-1.5 text-xs press"
+                    >
+                      Remove key
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-foreground/40 px-1">Key is saved only on this device. Get a free key at aistudio.google.com</p>
+              </div>
+            )}
+
             <button
               onClick={runInsights}
               disabled={aiLoading}
