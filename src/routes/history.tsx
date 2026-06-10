@@ -73,12 +73,6 @@ function HistoryPage() {
   const runInsights = async () => {
     setAiLoading(true); setAiError(null); setAiResult(null);
     try {
-      const env = (import.meta as any).env ?? {};
-      const apiKey: string | undefined = env.VITE_GEMINI_API_KEY;
-      if (!apiKey || apiKey.trim() === "") {
-        setAiError("VITE_GEMINI_API_KEY is missing. Add it in Vercel → Project → Settings → Environment Variables, then redeploy.");
-        setAiLoading(false); return;
-      }
       const summary = last7.map((k) => {
         const d = days[k];
         if (!d) return { date: k, empty: true };
@@ -91,28 +85,32 @@ function HistoryPage() {
           toughDay: !!d.toughDay,
         };
       });
-      const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English mixed language. Be encouraging, never shame. Data: ${JSON.stringify(summary)}`;
 
-      // Try models in order — newest first, stable fallbacks after.
-      const MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
-      const callModel = (model: string) => fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-      );
+      const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English (Hinglish) mixed language. Be warm, encouraging, never shame. Keep it personal and specific to the data. Data: ${JSON.stringify(summary)}`;
 
-      let res: Response | null = null;
-      let lastError = "";
-      for (const model of MODELS) {
-        res = await callModel(model);
-        if (res.ok) break;
+      // Pollinations.ai — completely free, no API key needed.
+      const res = await fetch("https://text.pollinations.ai/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: "You are a gentle, encouraging life coach who speaks in Hinglish (Hindi + English mix). Be warm, specific, and never shame. Give 3-4 bullet insights." },
+            { role: "user", content: prompt },
+          ],
+          model: "openai",
+          seed: 42,
+          private: true,
+        }),
+      });
+
+      if (!res.ok) {
         const errText = await res.text();
-        lastError = `Gemini ${res.status} (${model}): ${errText.slice(0, 200)}`;
-        res = null;
+        throw new Error(`AI service error ${res.status}: ${errText.slice(0, 200)}`);
       }
 
-      if (!res) throw new Error(lastError || "All Gemini models failed. Try again later.");
-      const json = await res.json();
-      setAiResult(json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "No insights returned.");
+      const text = await res.text();
+      if (!text || text.trim() === "") throw new Error("No insights returned. Try again.");
+      setAiResult(text.trim());
     } catch (e: any) {
       setAiError(e?.message ?? "Something went wrong. Try again later.");
     } finally { setAiLoading(false); }
