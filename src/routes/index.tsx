@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useStore, useToday, store, detectStudyTask } from "@/lib/store";
+import { actions, useStore, useToday, detectStudyTask } from "@/lib/store";
 import { istDateKey, lastNDays, nowIST, istGreeting } from "@/lib/ist";
 import { dailyQuote } from "@/lib/quotes";
 import { Plus, X, Flame, Bell, BellOff } from "lucide-react";
@@ -125,14 +125,8 @@ function TodayPage() {
 
   const addTask = () => {
     if (!taskTitle.trim()) return;
-    actions.addTask(taskScope, taskTitle.trim(), taskHigh ? "high" : "normal");
-    if (taskRemind && taskScope === "today") {
-      const key = istDateKey();
-      setTimeout(() => {
-        const t = store.get().days[key]?.tasksToday.slice(-1)[0];
-        if (t) actions.setTaskReminder("today", t.id, new Date(taskRemind).toISOString());
-      }, 0);
-    }
+    const remindIso = (taskRemind && taskScope === "today") ? new Date(taskRemind).toISOString() : undefined;
+    actions.addTask(taskScope, taskTitle.trim(), taskHigh ? "high" : "normal", undefined, remindIso);
     setTaskTitle(""); setTaskHigh(false); setTaskRemind(""); setTaskScope("today");
   };
 
@@ -239,7 +233,7 @@ function TodayPage() {
             <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">focus</span>
           </header>
 
-          {perm !== "granted" && perm !== "unknown" && (
+          {(perm === "default" || perm === "denied") && (
             <button onClick={requestPerm} className="w-full card-sky p-3 text-sm text-left flex items-center gap-2 press mb-2">
               <Bell size={14} /> Enable notifications for reminders
             </button>

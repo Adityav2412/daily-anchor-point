@@ -118,6 +118,27 @@ function persist() {
   listeners.forEach((l) => l());
 }
 
+// ── Cross-tab sync ────────────────────────────────────────────────────────────
+// When another browser tab writes to localStorage (different JS context),
+// the current tab's in-memory `state` becomes stale. The native "storage"
+// event fires in all OTHER tabs when localStorage changes, so we can pick
+// that up here and update in-memory state + notify all React subscribers.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key !== KEY || !e.newValue) return;
+    try {
+      const incoming = JSON.parse(e.newValue) as State;
+      const fixed: Record<string, DayData> = {};
+      for (const k of Object.keys(incoming.days || {})) fixed[k] = backfillDay(incoming.days[k]);
+      incoming.days = fixed;
+      if (!incoming.customCategories) incoming.customCategories = [];
+      if (!incoming.events) incoming.events = [];
+      state = incoming;
+      listeners.forEach((l) => l());
+    } catch {}
+  });
+}
+
 export const store = {
   get: () => state,
   subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },
@@ -247,12 +268,13 @@ export const actions = {
       return s;
     });
   },
-  addTask(scope: "today" | "tomorrow", title: string, priority: "normal" | "high", isStudy?: boolean) {
+  addTask(scope: "today" | "tomorrow", title: string, priority: "normal" | "high", isStudy?: boolean, remindAt?: string): string {
     const key = istDateKey();
+    const id = crypto.randomUUID();
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
       const study = isStudy ?? detectStudyTask(title);
-      const t: TaskItem = { id: crypto.randomUUID(), title, priority, done: false, createdAt: new Date().toISOString(), isStudy: study };
+      const t: TaskItem = { id, title, priority, done: false, createdAt: new Date().toISOString(), isStudy: study, remindAt: remindAt || undefined, reminded: false };
       if (scope === "today") s.days[key].tasksToday.push(t);
       else s.days[key].tasksTomorrow.push(t);
       // If a tomorrow task is a study task, append its title to today's tomorrowPlan
@@ -266,6 +288,7 @@ export const actions = {
       }
       return s;
     });
+    return id;
   },
   setTaskStudy(scope: "today" | "tomorrow", id: string, isStudy: boolean) {
     const key = istDateKey();

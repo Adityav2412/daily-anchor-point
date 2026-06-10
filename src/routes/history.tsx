@@ -92,13 +92,25 @@ function HistoryPage() {
         };
       });
       const prompt = `You are a gentle, honest life coach for a student named Akshay who has OCD, sleep apnea and anxiety. Analyze this weekly data and give 3-4 short insights in simple Hindi+English mixed language. Be encouraging, never shame. Data: ${JSON.stringify(summary)}`;
-      const callModel = async (model: string) => fetch(
+
+      // Try models in order — newest first, stable fallbacks after.
+      const MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+      const callModel = (model: string) => fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
       );
-      let res = await callModel("gemini-2.0-flash");
-      if (!res.ok) res = await callModel("gemini-1.5-flash-latest");
-      if (!res.ok) { const t = await res.text(); throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`); }
+
+      let res: Response | null = null;
+      let lastError = "";
+      for (const model of MODELS) {
+        res = await callModel(model);
+        if (res.ok) break;
+        const errText = await res.text();
+        lastError = `Gemini ${res.status} (${model}): ${errText.slice(0, 200)}`;
+        res = null;
+      }
+
+      if (!res) throw new Error(lastError || "All Gemini models failed. Try again later.");
       const json = await res.json();
       setAiResult(json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "No insights returned.");
     } catch (e: any) {
