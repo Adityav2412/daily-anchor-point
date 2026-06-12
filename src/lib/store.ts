@@ -87,6 +87,33 @@ function backfillDay(d: Partial<DayData> | undefined): DayData {
 
 function load(): State {
   if (typeof window === "undefined") return { habits: [], days: {} };
+  
+  // One-time database reset for June 15, 2026
+  const resetKey = "focusflow_june15_reset_v2";
+  if (localStorage.getItem(resetKey) !== "true") {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as State;
+        parsed.days = {}; // Wipe history
+        parsed.dataStartKey = "2026-06-15"; // Set start key
+        parsed.eodNotifiedKey = undefined;
+        localStorage.setItem(KEY, JSON.stringify(parsed));
+      } else {
+        const initial: State = {
+          habits: [
+            { id: crypto.randomUUID(), name: "Drink water", category: "non-negotiable", createdAt: new Date().toISOString() },
+            { id: crypto.randomUUID(), name: "10 min walk", category: "adapting", createdAt: new Date().toISOString() },
+          ],
+          days: {},
+          dataStartKey: "2026-06-15"
+        };
+        localStorage.setItem(KEY, JSON.stringify(initial));
+      }
+      localStorage.setItem(resetKey, "true");
+    } catch {}
+  }
+
   let parsed: State | null = null;
   try {
     const raw = localStorage.getItem(KEY);
