@@ -1,48 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday } from "@/lib/store";
 import { istYesterdayKey, formatHM } from "@/lib/ist";
-import { Plus, X, Check, BookOpen } from "lucide-react";
-import { StudyBook } from "@/components/illustrations";
+import { Plus, X, Check, BookOpen, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/study")({
-  head: () => ({ meta: [{ title: "Study — daily." }] }),
+  head: () => ({ meta: [{ title: "Study — LIFE" }] }),
   component: StudyPage,
 });
 
-// Parse plan lines: support backlog tag "📌"
-function parsePlanLines(raw: string): { text: string; backlog: boolean }[] {
+const FEELINGS = [
+  { v: "hard", e: "😫", l: "Hard" },
+  { v: "okay", e: "😐", l: "Okay" },
+  { v: "good", e: "🙂", l: "Good" },
+] as const;
+
+function parsePlanLines(raw: string): string[] {
   if (!raw.trim()) return [];
-  return raw
-    .split("\n")
-    .map((l) => l.replace(/^•\s*/, "").trim())
-    .filter(Boolean)
-    .map((l) => {
-      const backlog = l.startsWith("📌");
-      return { text: backlog ? l.replace(/^📌\s*/, "").trim() : l, backlog };
-    });
+  return raw.split("\n").map((l) => l.replace(/^•\s*/, "").trim()).filter(Boolean);
 }
 
 function StudyPage() {
   const today = useToday();
   const yKey = istYesterdayKey();
   const yPlanRaw = useStore((s) => s.days[yKey]?.study.tomorrowPlan ?? "");
-  const yPlanStatus = useStore((s) => s.days[yKey]?.study.planStatus);
-  const todayPlanRaw = today.study.tomorrowPlan ?? "";
+  const allDays = useStore((s) => s.days);
 
-  // Today's plan = yesterday's plan. If yesterday's plan was not marked done, items become backlog.
-  const isBacklog = yPlanRaw.trim().length > 0 && !yPlanStatus?.done;
-  const planItems = parsePlanLines(yPlanRaw).map((it) => ({ ...it, backlog: it.backlog || isBacklog }));
-  const checked = today.study.planStatus?.done === true;
+  // Carry over up to 3 unchecked from yesterday → today's plan checklist
+  const yPlan = useMemo(() => parsePlanLines(yPlanRaw).slice(0, 3), [yPlanRaw]);
+  const [planChecks, setPlanChecks] = useState<Record<number, boolean>>({});
 
-  // Manual log
   const [topic, setTopic] = useState("");
   const [hrs, setHrs] = useState("");
   const [mins, setMins] = useState("");
+  const [feeling, setFeeling] = useState<"hard" | "okay" | "good" | "">("");
 
-  // Plan tomorrow textarea
-  const [plan, setPlan] = useState(todayPlanRaw);
+  const [plan, setPlan] = useState(today.study.tomorrowPlan ?? "");
+
+  const pastSubjects = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(allDays).forEach((d) => (d.study.sessions ?? []).forEach((s) => set.add(s.subject)));
+    return Array.from(set).slice(0, 30);
+  }, [allDays]);
 
   const logStudy = () => {
     const minutes = (parseInt(hrs || "0", 10) || 0) * 60 + (parseInt(mins || "0", 10) || 0);
@@ -54,62 +54,63 @@ function StudyPage() {
       startISO: start,
       endISO: now.toISOString(),
       durationMin: minutes,
+      feeling: feeling || undefined,
     });
     if (typeof window !== "undefined") {
-      const total = (today.study.sessions ?? []).reduce((a, s) => a + s.durationMin, 0) + minutes;
       window.dispatchEvent(new CustomEvent("daily:in-app-alert", {
-        detail: { title: "Well done, Akshay! 💪", body: `${formatHM(total)} studied today` }
+        detail: { title: "Nicely done 🌿", body: `${formatHM(minutes)} of ${topic.trim()}` }
       }));
     }
-    setTopic(""); setHrs(""); setMins("");
+    setTopic(""); setHrs(""); setMins(""); setFeeling("");
   };
 
   const todayTotal = (today.study.sessions ?? []).reduce((a, s) => a + s.durationMin, 0);
 
   return (
-    <AppShell title="Study">
+    <AppShell title="Study" subtitle="Gentle planning, no timers.">
       <div className="space-y-4 stagger">
-        <div className="flex justify-center -mt-2 mb-1"><StudyBook className="h-16 w-auto" /></div>
-        {/* TODAY'S PLAN */}
-        <div className="card-amber p-5 animate-fade-up">
+        {/* Today's plan */}
+        <div className="card-sage p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-3">Today's plan</div>
-          {planItems.length === 0 ? (
-            <p className="text-sm text-foreground/60 italic">Nothing planned. Add a plan for tomorrow below.</p>
+          {yPlan.length === 0 ? (
+            <p className="text-sm text-foreground/65 italic">Nothing carried over. Plan tomorrow below — it'll show here.</p>
           ) : (
             <div className="space-y-2">
-              {planItems.map((it, i) => (
-                <div key={i} className="flex items-start gap-3">
+              {yPlan.map((it, i) => {
+                const checked = !!planChecks[i];
+                return (
                   <button
-                    onClick={() => actions.setPlanStatus(checked ? undefined : { done: true })}
-                    className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 press transition ${checked ? "bg-amber border-amber text-[#0A0A0A]" : "border-foreground/30"}`}
-                  >{checked && <Check size={13} className="animate-tick" />}</button>
-                  <div className="flex-1">
-                    <p className={`text-[15px] ${checked ? "line-through text-foreground/50" : ""}`}>{it.text}</p>
-                    {it.backlog && (
-                      <span className="inline-block mt-1 text-[10px] uppercase tracking-wider bg-destructive/15 text-destructive px-2 py-0.5 rounded-full">📌 Backlog</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {!checked && (
-                <p className="text-[11px] text-foreground/55 italic pt-1">If unchecked by midnight, this rolls to tomorrow as backlog.</p>
-              )}
+                    key={i}
+                    onClick={() => setPlanChecks((c) => ({ ...c, [i]: !c[i] }))}
+                    className="w-full flex items-start gap-3 text-left press"
+                  >
+                    <span className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 transition ${checked ? "bg-sage-deep text-primary-foreground" : "bg-card/60 border border-foreground/20"}`}>
+                      {checked && <Check size={13} className="animate-tick" />}
+                    </span>
+                    <span className={`text-[15px] ${checked ? "line-through text-foreground/50" : ""}`}>{it}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Manual log */}
+        {/* Log session */}
         <div className="card-paper p-5">
           <div className="flex items-center gap-2 mb-3">
-            <BookOpen size={14} className="text-amber" />
-            <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Log what you studied</span>
+            <BookOpen size={14} className="text-sage" />
+            <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Log a session</span>
           </div>
           <input
+            list="study-subjects"
             value={topic} onChange={(e) => setTopic(e.target.value)}
-            placeholder="What did you study?"
+            placeholder="Subject (e.g. Polity, English…)"
             className="w-full rounded-full bg-muted px-4 py-2.5 text-sm outline-none placeholder:text-foreground/40 mb-2"
           />
-          <div className="flex gap-2 items-center">
+          <datalist id="study-subjects">
+            {pastSubjects.map((s) => <option key={s} value={s} />)}
+          </datalist>
+          <div className="flex gap-2 items-center mb-2">
             <input
               value={hrs} onChange={(e) => setHrs(e.target.value.replace(/\D/g, ""))}
               placeholder="0" inputMode="numeric"
@@ -124,40 +125,59 @@ function StudyPage() {
             <span className="text-xs text-muted-foreground">min</span>
             <button
               onClick={logStudy}
-              className="ml-auto rounded-full bg-amber text-[#0A0A0A] px-4 py-2 text-sm font-medium press flex items-center gap-1"
-            ><Plus size={13} /> Add</button>
+              className="ml-auto rounded-full bg-sage-deep text-primary-foreground px-4 py-2 text-sm font-medium press flex items-center gap-1"
+            ><Plus size={13} /> Log</button>
+          </div>
+          <div className="flex gap-2">
+            {FEELINGS.map((f) => (
+              <button
+                key={f.v}
+                onClick={() => setFeeling(feeling === f.v ? "" : f.v as any)}
+                className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs press ${feeling === f.v ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+              >
+                <span>{f.e}</span> {f.l}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Today's sessions */}
+        {/* Today total */}
+        {todayTotal > 0 && (
+          <div className="card-cream p-4 flex items-baseline justify-between">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/55">Today's total</div>
+            <div className="font-display text-2xl">{formatHM(todayTotal)}</div>
+          </div>
+        )}
+
+        {/* Sessions list */}
         {(today.study.sessions?.length ?? 0) > 0 && (
-          <div className="card-paper p-5">
-            <div className="flex items-baseline justify-between mb-3">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Today's sessions</div>
-              <span className="text-xs tabular-nums text-foreground/70">Total {formatHM(todayTotal)}</span>
-            </div>
+          <div className="card-paper p-4">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Sessions</div>
             <div className="space-y-2 stagger">
               {today.study.sessions.map((s) => (
-                <div key={s.id} className="flex items-center justify-between text-sm bg-muted rounded-2xl px-4 py-2.5">
-                  <span className="font-medium truncate flex-1">{s.subject}</span>
-                  <span className="text-xs tabular-nums text-muted-foreground mr-3">{formatHM(s.durationMin)}</span>
-                  <button onClick={() => actions.removeStudySession(s.id)} className="text-foreground/30 hover:text-foreground transition"><X size={12} /></button>
+                <div key={s.id} className="flex items-center gap-3 bg-muted rounded-2xl px-3 py-2">
+                  <span className="text-sm font-medium truncate flex-1">{s.subject}</span>
+                  <span className="text-xs tabular-nums text-foreground/70">{formatHM(s.durationMin)}</span>
+                  <button onClick={() => actions.removeStudySession(s.id)} className="text-foreground/35 hover:text-foreground transition">
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Plan for tomorrow */}
-        <div className="card-mint p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60 mb-2">Plan for tomorrow</div>
+        {/* Tomorrow's plan */}
+        <div className="card-lavender p-5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/55 mb-2">Tomorrow's plan</div>
           <textarea
             value={plan} onChange={(e) => setPlan(e.target.value)}
             onBlur={() => actions.setStudy({ tomorrowPlan: plan })}
             rows={3}
-            placeholder="One item per line. Shows as Today's Plan tomorrow."
-            className="w-full rounded-2xl bg-background/70 p-3 text-sm outline-none resize-none placeholder:text-foreground/40"
+            placeholder="One item per line. Top 3 carry into tomorrow."
+            className="w-full rounded-2xl bg-card/70 p-3 text-sm outline-none resize-none placeholder:text-foreground/40"
           />
+          <p className="text-[11px] text-foreground/55 italic mt-2">Anything beyond 3 quietly archives — keeping it light.</p>
         </div>
       </div>
     </AppShell>
