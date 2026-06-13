@@ -155,14 +155,14 @@ function JournalField({ label, placeholder, value, onSave }: { label: string; pl
   const [draft, setDraft] = useState(value);
   return (
     <div>
-      <label className="text-[11px] text-muted-foreground block mb-1">{label}</label>
+      <label className="text-[13px] text-foreground/70 block mb-2 font-medium">{label}</label>
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => { if (draft !== value) onSave(draft); }}
-        rows={2}
+        rows={4}
         placeholder={placeholder}
-        className="w-full rounded-2xl bg-muted p-3 text-sm outline-none resize-none placeholder:text-foreground/40"
+        className="w-full rounded-2xl bg-muted p-4 text-[16px] leading-relaxed outline-none resize-none placeholder:text-foreground/40"
       />
     </div>
   );
