@@ -77,6 +77,7 @@ export interface DayData {
   intention?: Intention;
   intentionText?: string;
   toughDay?: ToughDay;
+  restDay?: RestDay;
   nightSetup?: NightSetup;
   lastRolloverKey?: string;
 
