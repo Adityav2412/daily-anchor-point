@@ -28,6 +28,7 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
   const push = (k: string, it: TimelineItem) => { (byDate[k] = byDate[k] ?? []).push(it); };
 
   for (const k of Object.keys(s.days)) {
+    if (k < LIFE_START_KEY) continue;
     const d = s.days[k];
     if (d.mood) push(k, { id: `${k}-mood`, kind: "mood", dateKey: k, emoji: MOOD_EMOJI[d.mood], text: `Mood: ${MOOD_LABEL[d.mood]}` });
     if (d.energy) push(k, { id: `${k}-energy`, kind: "energy", dateKey: k, emoji: ENERGY_EMOJI[d.energy], text: `Energy: ${d.energy}` });
