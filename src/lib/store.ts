@@ -32,7 +32,7 @@ export function detectStudyTask(title: string): boolean {
   const t = title.toLowerCase();
   return STUDY_KEYWORDS.some((k) => new RegExp(`\\b${k}`, "i").test(t));
 }
-export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; geminiApiKey?: string; }
+export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; geminiApiKey?: string; notificationsEnabled?: boolean; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; feeling?: "hard" | "okay" | "good"; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
@@ -103,6 +103,7 @@ export interface GardenState { stage: number; lastGrowKey?: string; lastMsgKey?:
 export interface MissedReminder { id: string; key: string; title: string; body?: string; scheduledAt: string; }
 
 export interface State {
+  version?: number;
   habits: Habit[];
   days: Record<string, DayData>;
   settings?: Settings;
@@ -119,6 +120,8 @@ export interface State {
   missedReminders?: MissedReminder[];
 }
 
+export const STATE_VERSION = 1;
+
 const KEY = "life_state_v1";
 
 // Day 1 of the LIFE journey. Nothing before this date is shown or counted.
@@ -132,6 +135,7 @@ const EMPTY_DAY = emptyDay();
 
 function emptyState(): State {
   return {
+    version: STATE_VERSION,
     habits: [],
     days: {},
     dataStartKey: LIFE_START_KEY,
@@ -153,6 +157,7 @@ function load(): State {
     if (raw) parsed = JSON.parse(raw);
   } catch {}
   const base: State = parsed ?? emptyState();
+  base.version = base.version ?? STATE_VERSION;
   base.habits = base.habits ?? [];
   base.days = base.days ?? {};
   base.dataStartKey = LIFE_START_KEY;
@@ -471,6 +476,27 @@ export const actions = {
   clearMissedReminders() {
     store.set((s) => { s.missedReminders = []; return s; });
   },
+  exportData(): string {
+    return JSON.stringify(store.get(), null, 2);
+  },
+  importData(json: string): { ok: boolean; error?: string } {
+    try {
+      const parsed = JSON.parse(json);
+      if (!parsed || typeof parsed !== "object" || !parsed.days || !Array.isArray(parsed.habits)) {
+        return { ok: false, error: "File doesn't look like a LIFE backup." };
+      }
+      const merged: State = { ...emptyState(), ...parsed, version: STATE_VERSION, dataStartKey: LIFE_START_KEY };
+      state = merged;
+      persist();
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || "Invalid JSON." };
+    }
+  },
+  resetAll() {
+    state = emptyState();
+    persist();
+  },
 };
 
 export function getSettings(): Settings {
@@ -479,6 +505,8 @@ export function getSettings(): Settings {
 
 function notify(title: string, body?: string) {
   if (typeof window === "undefined") return;
+  const enabled = store.get().settings?.notificationsEnabled !== false;
+  if (!enabled) return;
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     try { new Notification(title, { body, icon: "/icon-192.png", badge: "/icon-192.png", tag: title }); return; } catch {}
   }

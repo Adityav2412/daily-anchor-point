@@ -5,7 +5,8 @@ import { actions, startMidnightWatcher, useStore } from "@/lib/store";
 import { recomputeGarden } from "@/lib/garden";
 import { nowIST } from "@/lib/ist";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Leaf, WifiOff, Bell, X } from "lucide-react";
+import { Moon, Leaf, WifiOff, Bell, X, Settings as SettingsIcon } from "lucide-react";
+import { SettingsModal } from "./SettingsModal";
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -27,6 +28,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
   const [pretty, setPretty] = useState<{ weekday: string; rest: string }>({ weekday: "", rest: "" });
   const [alertMsg, setAlertMsg] = useState<{ title: string; body?: string } | null>(null);
   const [online, setOnline] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const missed = useStore((s) => s.missedReminders ?? []);
   const { theme, toggle } = useTheme();
   useEffect(() => {
@@ -71,13 +73,22 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
               </div>
             )}
           </div>
-          <button
-            onClick={toggle}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shrink-0 shadow-[var(--card-shadow)] press transition"
-          >
-            {theme === "dark" ? <Moon size={18} /> : <Leaf size={18} />}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={toggle}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shadow-[var(--card-shadow)] press transition"
+            >
+              {theme === "dark" ? <Moon size={18} /> : <Leaf size={18} />}
+            </button>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Open settings"
+              className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shadow-[var(--card-shadow)] press transition"
+            >
+              <SettingsIcon size={18} />
+            </button>
+          </div>
         </div>
       </header>
       <main className="px-5 animate-page-in">
@@ -116,6 +127,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
         </div>
       )}
       <BottomNav />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
