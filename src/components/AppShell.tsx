@@ -40,31 +40,31 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
   }, []);
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
-      <header className="px-6 pt-8 pb-3 animate-pop">
-        <div className="flex items-start justify-between">
+    <div className="min-h-screen pb-32 max-w-md mx-auto">
+      <header className="px-6 pt-10 pb-5 animate-pop">
+        <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div suppressHydrationWarning className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-medium">
+            <div suppressHydrationWarning className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground font-medium">
               {pretty.weekday || "\u00a0"}
             </div>
-            <h1 className="mt-1.5 font-display text-[40px] leading-[1] tracking-tight">
+            <h1 className="mt-3 font-display text-[52px] leading-[0.95] tracking-tight">
               {title}
             </h1>
-            <p suppressHydrationWarning className="mt-1.5 text-[13px] text-muted-foreground">
+            <p suppressHydrationWarning className="mt-2.5 text-[16px] text-muted-foreground">
               {subtitle ?? pretty.rest}
             </p>
             {!online && (
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber/15 text-foreground/75 px-2.5 py-1 text-[10px] font-medium">
-                <WifiOff size={11} /> Offline mode active
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber/15 text-foreground/75 px-3 py-1.5 text-[11px] font-medium">
+                <WifiOff size={12} /> Offline mode active
               </div>
             )}
           </div>
           <button
             onClick={toggle}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="h-10 w-10 rounded-full bg-card text-foreground flex items-center justify-center shrink-0 shadow-[var(--card-shadow)] press transition"
+            className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shrink-0 shadow-[var(--card-shadow)] press transition"
           >
-            {theme === "dark" ? <Moon size={16} /> : <Leaf size={16} />}
+            {theme === "dark" ? <Moon size={18} /> : <Leaf size={18} />}
           </button>
         </div>
       </header>

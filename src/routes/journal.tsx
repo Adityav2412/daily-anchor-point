@@ -41,11 +41,11 @@ function JournalPage() {
 
   return (
     <AppShell title="Journal" subtitle="Lightweight reflection.">
-      <div className="space-y-4 stagger">
+      <div className="space-y-5 stagger">
         {/* Today's reflection */}
-        <div className="card-paper p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Today</div>
-          <div className="space-y-3">
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Today</div>
+          <div className="space-y-5">
             {QUESTIONS.map((q) => (
               <JournalField
                 key={q.key}
@@ -155,14 +155,14 @@ function JournalField({ label, placeholder, value, onSave }: { label: string; pl
   const [draft, setDraft] = useState(value);
   return (
     <div>
-      <label className="text-[11px] text-muted-foreground block mb-1">{label}</label>
+      <label className="text-[13px] text-foreground/70 block mb-2 font-medium">{label}</label>
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => { if (draft !== value) onSave(draft); }}
-        rows={2}
+        rows={4}
         placeholder={placeholder}
-        className="w-full rounded-2xl bg-muted p-3 text-sm outline-none resize-none placeholder:text-foreground/40"
+        className="w-full rounded-2xl bg-muted p-4 text-[16px] leading-relaxed outline-none resize-none placeholder:text-foreground/40"
       />
     </div>
   );

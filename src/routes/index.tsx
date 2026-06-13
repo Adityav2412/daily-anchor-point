@@ -79,18 +79,18 @@ function TodayPage() {
 
   return (
     <AppShell title="Today" subtitle={longDate}>
-      <div className="space-y-4 stagger">
+      <div className="space-y-5 stagger">
         {/* Greeting */}
-        <div className="card-paper p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Welcome back</div>
-          <p className="font-display text-[26px] leading-tight tracking-tight mt-1">{greeting || "Hello, Akshay"}</p>
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Welcome back</div>
+          <p className="font-display text-[32px] leading-tight tracking-tight mt-2">{greeting || "Hello, Akshay"}</p>
         </div>
 
-        {/* Aaj Ka Focus — prominent, right under greeting */}
-        <div className="card-lavender p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">Aaj Ka Focus</div>
-            {today.focus && <span className="text-[10px] text-sage font-semibold">saved</span>}
+        {/* Aaj Ka Focus — prominent */}
+        <div className="card-lavender p-7">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/60">Aaj Ka Focus</div>
+            {today.focus && <span className="text-[11px] text-sage font-semibold">saved</span>}
           </div>
           <input
             value={focusDraft}
@@ -98,15 +98,15 @@ function TodayPage() {
             onBlur={saveFocus}
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             placeholder="What's one thing for today?"
-            className="w-full bg-transparent font-display text-[22px] leading-snug tracking-tight outline-none placeholder:text-foreground/30"
+            className="w-full bg-transparent font-display text-[28px] leading-snug tracking-tight outline-none placeholder:text-foreground/30"
           />
           {!today.focus && (
-            <div className="flex gap-1.5 flex-wrap mt-3">
+            <div className="flex gap-2 flex-wrap mt-5">
               {FOCUS_SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => { setFocusDraft(s); actions.setFocus(s); }}
-                  className="text-[11px] rounded-full bg-card/70 px-3 py-1.5 press text-foreground/70"
+                  className="text-[13px] rounded-full bg-card/70 px-4 py-2 press text-foreground/75"
                 >{s}</button>
               ))}
             </div>
@@ -117,19 +117,19 @@ function TodayPage() {
         <Companion stage={garden.stage} />
 
         {/* Mood */}
-        <div className="card-paper p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">How are you feeling?</div>
-          <div className="grid grid-cols-4 gap-2">
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">How are you feeling?</div>
+          <div className="grid grid-cols-4 gap-3">
             {MOODS.map((m) => {
               const active = today.mood === m.value;
               return (
                 <button
                   key={m.value}
                   onClick={() => actions.setMood(m.value)}
-                  className={`flex flex-col items-center gap-1 rounded-2xl py-3 press transition ${active ? "bg-sage text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+                  className={`flex flex-col items-center gap-2 rounded-3xl py-5 press transition ${active ? "bg-sage text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
                 >
-                  <span className="text-2xl">{m.emoji}</span>
-                  <span className="text-[10px] font-medium">{m.label}</span>
+                  <span className="text-[34px] leading-none">{m.emoji}</span>
+                  <span className="text-[11px] font-medium">{m.label}</span>
                 </button>
               );
             })}
@@ -137,71 +137,71 @@ function TodayPage() {
         </div>
 
         {/* Energy */}
-        <div className="card-paper p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Energy today</div>
-          <div className="flex gap-2">
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Energy today</div>
+          <div className="flex gap-2.5">
             {ENERGIES.map((e) => {
               const active = today.energy === e.value;
               return (
                 <button
                   key={e.value}
                   onClick={() => actions.setEnergy(e.value)}
-                  className={`flex-1 rounded-full py-2.5 text-sm font-medium press transition ${active ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+                  className={`flex-1 rounded-full py-3.5 text-[15px] font-medium press transition ${active ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
                 >{e.label}</button>
               );
             })}
           </div>
         </div>
 
-        {/* Daily snapshot */}
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label="Habits" value={`${habitDone}/${habits.length}`} to="/habits" />
-          <Stat label="Study" value={formatHM(studyMin) || "—"} to="/study" />
-          <Stat label="Tasks left" value={String(tasksLeft)} to="/tasks" />
+        {/* Daily snapshot — large cards */}
+        <div className="space-y-3">
+          <Stat label="Habits" value={`${habitDone} / ${habits.length}`} sublabel="completed today" to="/habits" />
+          <Stat label="Study" value={studyMin ? formatHM(studyMin) : "—"} sublabel={studyMin ? "today" : "no session yet"} to="/study" />
+          <Stat label="Tasks" value={String(tasksLeft)} sublabel={tasksLeft === 1 ? "remaining" : "remaining"} to="/tasks" />
           <Stat
-            label="Next event"
+            label="Upcoming"
             value={upcoming ? labelDiff(upcomingDiff!) : "—"}
-            sublabel={upcoming?.name}
+            sublabel={upcoming?.name ?? "nothing scheduled"}
             to="/calendar"
           />
         </div>
 
         {/* Win of the day */}
-        <div className="card-cream p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/55 mb-2">Win of the day</div>
+        <div className="card-cream p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mb-3">Win of the day</div>
           <input
             value={winDraft}
             onChange={(e) => setWinDraft(e.target.value)}
             onBlur={saveWin}
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             placeholder="One small thing that went right…"
-            className="w-full bg-transparent text-[15px] outline-none placeholder:text-foreground/35"
+            className="w-full bg-transparent text-[17px] outline-none placeholder:text-foreground/35"
           />
-          {today.study.win && <p className="text-[11px] text-foreground/55 italic mt-1">Saved to Memory Jar</p>}
+          {today.study.win && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
         </div>
 
         {/* Bad day mode */}
         {!toughLogged && !toughOpen && (
           <button
             onClick={() => setToughOpen(true)}
-            className="block w-full text-center text-[12px] text-muted-foreground underline underline-offset-2 py-1 hover:text-foreground transition"
+            className="block w-full text-center text-[13px] text-muted-foreground underline underline-offset-2 py-2 hover:text-foreground transition"
           >
             Today was difficult
           </button>
         )}
         {!toughLogged && toughOpen && (
-          <div className="card-paper p-5 animate-fade-up">
-            <p className="font-display text-lg tracking-tight">Some days are about getting through.</p>
-            <p className="text-sm text-foreground/65 mt-1">That's enough. Let's just log mood.</p>
-            <div className="grid grid-cols-4 gap-2 mt-3">
+          <div className="card-paper p-6 animate-fade-up">
+            <p className="font-display text-[22px] tracking-tight leading-tight">Some days are about getting through.</p>
+            <p className="text-[15px] text-foreground/65 mt-2">That's enough. Let's just log mood.</p>
+            <div className="grid grid-cols-4 gap-2.5 mt-4">
               {MOODS.map((m) => (
                 <button
                   key={m.value}
                   onClick={() => setToughMood(m.value)}
-                  className={`flex flex-col items-center gap-1 rounded-2xl py-2.5 press transition ${toughMood === m.value ? "bg-sage text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+                  className={`flex flex-col items-center gap-1.5 rounded-2xl py-3.5 press transition ${toughMood === m.value ? "bg-sage text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
                 >
-                  <span className="text-xl">{m.emoji}</span>
-                  <span className="text-[9px]">{m.label}</span>
+                  <span className="text-[26px] leading-none">{m.emoji}</span>
+                  <span className="text-[10px]">{m.label}</span>
                 </button>
               ))}
             </div>
@@ -209,23 +209,23 @@ function TodayPage() {
               value={toughNote}
               onChange={(e) => setToughNote(e.target.value)}
               placeholder="A short note (optional)"
-              rows={2}
-              className="w-full mt-3 rounded-2xl bg-muted p-3 text-sm outline-none resize-none placeholder:text-foreground/40"
+              rows={3}
+              className="w-full mt-4 rounded-2xl bg-muted p-4 text-[15px] outline-none resize-none placeholder:text-foreground/40"
             />
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-4">
               <button
                 onClick={() => { actions.setMood(toughMood); actions.logToughDay(toughNote); setToughOpen(false); }}
-                className="flex-1 rounded-full bg-sage-deep text-primary-foreground py-2.5 text-sm font-medium press"
+                className="flex-1 rounded-full bg-sage-deep text-primary-foreground py-3 text-[15px] font-medium press"
               >Save</button>
               <button
                 onClick={() => setToughOpen(false)}
-                className="rounded-full bg-muted text-foreground/70 px-4 text-sm press"
+                className="rounded-full bg-muted text-foreground/70 px-5 text-[15px] press"
               >Cancel</button>
             </div>
           </div>
         )}
         {toughLogged && (
-          <div className="card-sage-soft p-4 text-center text-sm text-foreground/75 italic">
+          <div className="card-sage-soft p-5 text-center text-[15px] text-foreground/75 italic">
             Some days are about getting through. That's enough.
           </div>
         )}
@@ -236,10 +236,12 @@ function TodayPage() {
 
 function Stat({ label, value, sublabel, to }: { label: string; value: string; sublabel?: string; to?: string }) {
   const inner = (
-    <div className="card-paper p-4 hover-lift h-full">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
-      <div className="font-display text-3xl leading-none mt-2">{value}</div>
-      {sublabel && <div className="text-[11px] text-muted-foreground mt-1 truncate">{sublabel}</div>}
+    <div className="card-paper p-6 hover-lift">
+      <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</div>
+      <div className="flex items-baseline justify-between gap-3 mt-3">
+        <div className="font-display text-[34px] leading-none">{value}</div>
+        {sublabel && <div className="text-[13px] text-muted-foreground truncate text-right">{sublabel}</div>}
+      </div>
     </div>
   );
   return to ? <Link to={to as any} className="block">{inner}</Link> : inner;

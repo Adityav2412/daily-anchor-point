@@ -5,17 +5,13 @@ export function Companion({ stage }: { stage: number }) {
   const label = stageLabel(stage);
   const msg = todaysMessage();
   return (
-    <div className="card-sage p-5 relative overflow-hidden">
-      <div className="flex items-center gap-4">
-        <div className="h-20 w-20 rounded-full bg-card/70 flex items-center justify-center text-5xl animate-sway shrink-0" aria-hidden>
-          {emoji}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/55">Your garden</div>
-          <p className="font-display text-[22px] leading-tight mt-1">{label}</p>
-          <p className="text-[13px] text-foreground/70 mt-1.5 italic">"{msg}"</p>
-        </div>
+    <div className="card-sage p-8 relative overflow-hidden text-center">
+      <div className="mx-auto h-44 w-44 rounded-full bg-card/60 flex items-center justify-center text-[110px] leading-none animate-sway" aria-hidden>
+        {emoji}
       </div>
+      <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mt-6">Your garden</div>
+      <p className="font-display text-[28px] leading-tight mt-2">{label}</p>
+      <p className="text-[17px] text-foreground/75 mt-3 italic leading-relaxed">"{msg}"</p>
     </div>
   );
 }
