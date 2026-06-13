@@ -10,8 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudyRouteImport } from './routes/study'
-import { Route as PlannerRouteImport } from './routes/planner'
-import { Route as HistoryRouteImport } from './routes/history'
 import { Route as HabitsRouteImport } from './routes/habits'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,16 +17,6 @@ import { Route as IndexRouteImport } from './routes/index'
 const StudyRoute = StudyRouteImport.update({
   id: '/study',
   path: '/study',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlannerRoute = PlannerRouteImport.update({
-  id: '/planner',
-  path: '/planner',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HabitsRoute = HabitsRouteImport.update({
@@ -51,16 +39,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/habits': typeof HabitsRoute
-  '/history': typeof HistoryRoute
-  '/planner': typeof PlannerRoute
   '/study': typeof StudyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/habits': typeof HabitsRoute
-  '/history': typeof HistoryRoute
-  '/planner': typeof PlannerRoute
   '/study': typeof StudyRoute
 }
 export interface FileRoutesById {
@@ -68,31 +52,20 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/habits': typeof HabitsRoute
-  '/history': typeof HistoryRoute
-  '/planner': typeof PlannerRoute
   '/study': typeof StudyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/habits' | '/history' | '/planner' | '/study'
+  fullPaths: '/' | '/calendar' | '/habits' | '/study'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/habits' | '/history' | '/planner' | '/study'
-  id:
-    | '__root__'
-    | '/'
-    | '/calendar'
-    | '/habits'
-    | '/history'
-    | '/planner'
-    | '/study'
+  to: '/' | '/calendar' | '/habits' | '/study'
+  id: '__root__' | '/' | '/calendar' | '/habits' | '/study'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   HabitsRoute: typeof HabitsRoute
-  HistoryRoute: typeof HistoryRoute
-  PlannerRoute: typeof PlannerRoute
   StudyRoute: typeof StudyRoute
 }
 
@@ -103,20 +76,6 @@ declare module '@tanstack/react-router' {
       path: '/study'
       fullPath: '/study'
       preLoaderRoute: typeof StudyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/planner': {
-      id: '/planner'
-      path: '/planner'
-      fullPath: '/planner'
-      preLoaderRoute: typeof PlannerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/habits': {
@@ -147,8 +106,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   HabitsRoute: HabitsRoute,
-  HistoryRoute: HistoryRoute,
-  PlannerRoute: PlannerRoute,
   StudyRoute: StudyRoute,
 }
 export const routeTree = rootRouteImport
