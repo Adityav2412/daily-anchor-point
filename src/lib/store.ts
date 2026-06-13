@@ -116,7 +116,7 @@ export interface State {
   archivedHabits?: Habit[];
 }
 
-const KEY = "focusflow_state_v1";
+const KEY = "life_state_v1";
 
 function emptyDay(): DayData {
   return { habits: {}, study: { entries: [], sessions: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], tasksUpcoming: [], blocks: [], timeLog: [], timeSessions: [] };
@@ -124,70 +124,36 @@ function emptyDay(): DayData {
 
 const EMPTY_DAY = emptyDay();
 
-function backfillDay(d: Partial<DayData> | undefined): DayData {
-  const base = emptyDay();
-  if (!d) return base;
+function emptyState(): State {
   return {
-    ...base,
-    ...d,
-    habits: d.habits ?? {},
-    study: { tomorrowPlan: "", ...(d.study ?? {}), entries: d.study?.entries ?? [], sessions: d.study?.sessions ?? [] },
-    tasksToday: d.tasksToday ?? [],
-    tasksTomorrow: d.tasksTomorrow ?? [],
-    tasksUpcoming: d.tasksUpcoming ?? [],
-    blocks: d.blocks ?? [],
-    timeLog: d.timeLog ?? [],
-    timeSessions: d.timeSessions ?? [],
+    habits: [],
+    days: {},
+    dataStartKey: istDateKey(),
+    customCategories: [],
+    events: [],
+    memoryJar: [],
+    garden: { stage: 0 },
+    archivedHabits: [],
   };
 }
 
 function load(): State {
   if (typeof window === "undefined") return { habits: [], days: {} };
-
   let parsed: State | null = null;
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) parsed = JSON.parse(raw);
   } catch {}
-  const base: State = parsed ?? {
-    habits: [
-      { id: crypto.randomUUID(), name: "Medication", category: "mental", icon: "💊", createdAt: new Date().toISOString() },
-      { id: crypto.randomUUID(), name: "Drink water", category: "physical", icon: "💧", createdAt: new Date().toISOString() },
-      { id: crypto.randomUUID(), name: "10 min walk", category: "physical", icon: "🚶", createdAt: new Date().toISOString() },
-    ],
-    days: {},
-  };
-  const fixed: Record<string, DayData> = {};
-  for (const k of Object.keys(base.days || {})) fixed[k] = backfillDay(base.days[k]);
-  base.days = fixed;
+  const base: State = parsed ?? emptyState();
+  // Ensure required fields exist (forward compatibility only — no legacy migration).
+  base.habits = base.habits ?? [];
+  base.days = base.days ?? {};
   if (!base.dataStartKey) base.dataStartKey = istDateKey();
   if (!base.customCategories) base.customCategories = [];
   if (!base.events) base.events = [];
   if (!base.memoryJar) base.memoryJar = [];
   if (!base.garden) base.garden = { stage: 0 };
   if (!base.archivedHabits) base.archivedHabits = [];
-
-  // Backfill old wins → memory jar (one-time)
-  try {
-    const seen = new Set(base.memoryJar.map((m) => `${m.dateKey}|${m.text}`));
-    for (const k of Object.keys(base.days)) {
-      const w = base.days[k].study.win?.trim();
-      if (w && !seen.has(`${k}|${w}`)) {
-        base.memoryJar.push({ id: crypto.randomUUID(), text: w, dateKey: k, createdAt: new Date().toISOString() });
-        seen.add(`${k}|${w}`);
-      }
-    }
-    base.memoryJar.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
-  } catch {}
-
-  // Default icons for legacy habits
-  for (const h of base.habits) {
-    if (!h.icon) {
-      const n = h.name.toLowerCase();
-      h.icon = n.includes("water") ? "💧" : n.includes("walk") ? "🚶" : n.includes("med") ? "💊" : n.includes("sleep") ? "😴" : n.includes("meditat") ? "🧘" : "🌿";
-    }
-  }
-
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
@@ -205,9 +171,7 @@ if (typeof window !== "undefined") {
     if (e.key !== KEY || !e.newValue) return;
     try {
       const incoming = JSON.parse(e.newValue) as State;
-      const fixed: Record<string, DayData> = {};
-      for (const k of Object.keys(incoming.days || {})) fixed[k] = backfillDay(incoming.days[k]);
-      incoming.days = fixed;
+      incoming.days = incoming.days ?? {};
       if (!incoming.customCategories) incoming.customCategories = [];
       if (!incoming.events) incoming.events = [];
       if (!incoming.memoryJar) incoming.memoryJar = [];
