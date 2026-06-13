@@ -135,6 +135,7 @@ const EMPTY_DAY = emptyDay();
 
 function emptyState(): State {
   return {
+    version: STATE_VERSION,
     habits: [],
     days: {},
     dataStartKey: LIFE_START_KEY,
