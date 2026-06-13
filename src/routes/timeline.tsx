@@ -82,8 +82,10 @@ function TimelinePage() {
         {/* Feed */}
         <div className="space-y-4">
           {orderedDates.length === 0 && (
-            <div className="card-paper p-8 text-center text-sm text-muted-foreground italic">
-              Your days will collect here as you check in.
+            <div className="card-sage p-8 text-center space-y-2">
+              <div className="text-[34px]">🌱</div>
+              <p className="font-display text-[20px] tracking-tight">Your story starts today.</p>
+              <p className="text-[14px] text-foreground/65 leading-relaxed">Check in, log a win, or write a journal entry — it'll show up here.</p>
             </div>
           )}
           {orderedDates.map((dk) => {
