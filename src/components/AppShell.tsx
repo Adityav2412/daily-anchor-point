@@ -28,6 +28,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
   const [pretty, setPretty] = useState<{ weekday: string; rest: string }>({ weekday: "", rest: "" });
   const [alertMsg, setAlertMsg] = useState<{ title: string; body?: string } | null>(null);
   const [online, setOnline] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const missed = useStore((s) => s.missedReminders ?? []);
   const { theme, toggle } = useTheme();
   useEffect(() => {
