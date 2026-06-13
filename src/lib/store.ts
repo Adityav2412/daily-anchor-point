@@ -103,6 +103,7 @@ export interface GardenState { stage: number; lastGrowKey?: string; lastMsgKey?:
 export interface MissedReminder { id: string; key: string; title: string; body?: string; scheduledAt: string; }
 
 export interface State {
+  version?: number;
   habits: Habit[];
   days: Record<string, DayData>;
   settings?: Settings;
@@ -118,6 +119,8 @@ export interface State {
   firedReminders?: Record<string, number>; // key -> ms fired at
   missedReminders?: MissedReminder[];
 }
+
+export const STATE_VERSION = 1;
 
 const KEY = "life_state_v1";
 
