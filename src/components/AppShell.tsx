@@ -5,7 +5,8 @@ import { actions, startMidnightWatcher, useStore } from "@/lib/store";
 import { recomputeGarden } from "@/lib/garden";
 import { nowIST } from "@/lib/ist";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Leaf, WifiOff, Bell, X } from "lucide-react";
+import { Moon, Leaf, WifiOff, Bell, X, Settings as SettingsIcon } from "lucide-react";
+import { SettingsModal } from "./SettingsModal";
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
