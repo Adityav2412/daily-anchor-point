@@ -73,13 +73,22 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
               </div>
             )}
           </div>
-          <button
-            onClick={toggle}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shrink-0 shadow-[var(--card-shadow)] press transition"
-          >
-            {theme === "dark" ? <Moon size={18} /> : <Leaf size={18} />}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={toggle}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shadow-[var(--card-shadow)] press transition"
+            >
+              {theme === "dark" ? <Moon size={18} /> : <Leaf size={18} />}
+            </button>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Open settings"
+              className="h-12 w-12 rounded-full bg-card text-foreground flex items-center justify-center shadow-[var(--card-shadow)] press transition"
+            >
+              <SettingsIcon size={18} />
+            </button>
+          </div>
         </div>
       </header>
       <main className="px-5 animate-page-in">
