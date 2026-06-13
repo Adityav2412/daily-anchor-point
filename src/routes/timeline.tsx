@@ -114,12 +114,10 @@ function TimelinePage() {
 
 function SummaryRow({ emoji, label, value }: { emoji: string; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-lg">{emoji}</span>
-      <div className="min-w-0">
-        <div className="text-[10px] text-foreground/55 truncate">{label}</div>
-        <div className="font-display text-lg leading-tight">{value}</div>
-      </div>
+    <div className="bg-card/55 rounded-2xl p-4">
+      <div className="text-[26px] leading-none">{emoji}</div>
+      <div className="font-display text-[30px] leading-none mt-3">{value}</div>
+      <div className="text-[12px] text-foreground/60 mt-1.5">{label}</div>
     </div>
   );
 }
