@@ -127,6 +127,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
         </div>
       )}
       <BottomNav />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
