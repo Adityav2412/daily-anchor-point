@@ -82,16 +82,15 @@ export function monthlySummary(): { goodDays: number; studyHours: number; wins: 
   let studyMin = 0;
   let wins = 0;
   for (const k of Object.keys(s.days)) {
-    if (!k.startsWith(ym)) continue;
+    if (!k.startsWith(ym) || k < LIFE_START_KEY) continue;
     const d = s.days[k];
     if (d.mood === "good" || d.mood === "great") goodDays++;
     studyMin += studyMinutesFor(d);
   }
   for (const m of s.memoryJar ?? []) {
-    if (m.dateKey.startsWith(ym)) wins++;
+    if (m.dateKey.startsWith(ym) && m.dateKey >= LIFE_START_KEY) wins++;
   }
-  // Growth = stages gained this month (approx: compare stage now to 30 days ago using activity proxy)
-  const monthKeys = lastNDays(30).filter((k) => k.startsWith(ym));
+  const monthKeys = lastNDays(30).filter((k) => k.startsWith(ym) && k >= LIFE_START_KEY);
   let monthLogged = 0;
   for (const k of monthKeys) if (dayHasActivity(s, k)) monthLogged++;
   const growth = Math.floor(monthLogged / 5);
