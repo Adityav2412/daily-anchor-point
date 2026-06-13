@@ -41,14 +41,15 @@ function TimelinePage() {
 
   return (
     <AppShell title="Timeline" subtitle="A gentle record of your days.">
-      <div className="space-y-4 stagger">
+      <div className="space-y-5 stagger">
         {/* Monthly summary */}
-        <div className="card-sage p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-foreground/60">This month · {summary.label}</div>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-4 mt-3">
+        <div className="card-sage p-7">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/60">This month</div>
+          <p className="font-display text-[26px] tracking-tight mt-1">{summary.label}</p>
+          <div className="grid grid-cols-2 gap-4 mt-6">
             <SummaryRow emoji="🙂" label="Good mood days" value={String(summary.goodDays)} />
             <SummaryRow emoji="📚" label="Study time" value={`${summary.studyHours}h`} />
-            <SummaryRow emoji="🏆" label="Wins collected" value={String(summary.wins)} />
+            <SummaryRow emoji="🏆" label="Wins" value={String(summary.wins)} />
             <SummaryRow emoji="🌱" label="Garden growth" value={summary.growth ? `+${summary.growth}` : "—"} />
           </div>
         </div>
