@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { istDateKey, lastNDays, nowIST } from "./ist";
+import { istDateKey, istMidnightMs, lastNDays, nowIST } from "./ist";
 
 export type HabitCategory = "non-negotiable" | "adapting" | "mental" | "physical" | "custom";
 export interface Habit {
@@ -464,6 +464,12 @@ export const actions = {
   },
   removeEvent(id: string) {
     store.set((s) => { s.events = (s.events ?? []).filter((e) => e.id !== id); return s; });
+  },
+  dismissMissedReminder(id: string) {
+    store.set((s) => { s.missedReminders = (s.missedReminders ?? []).filter((m) => m.id !== id); return s; });
+  },
+  clearMissedReminders() {
+    store.set((s) => { s.missedReminders = []; return s; });
   },
 };
 
