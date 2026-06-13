@@ -1,7 +1,7 @@
 // Garden growth + daily companion message.
 // Stage never decreases. Growth pauses on missing days; nothing is lost.
 
-import { store, studyMinutesFor, type State } from "./store";
+import { store, studyMinutesFor, LIFE_START_KEY, type State } from "./store";
 import { istDateKey, lastNDays } from "./ist";
 
 const STAGES = ["🌱", "🌿", "🌵", "🍀", "🌸", "🌺", "🌻", "🌳"] as const;
