@@ -54,6 +54,11 @@ function TodayPage() {
   const [toughNote, setToughNote] = useState("");
   const toughLogged = !!today.toughDay;
 
+  const [restOpen, setRestOpen] = useState(false);
+  const [restMood, setRestMood] = useState<Mood>("okay");
+  const [restNote, setRestNote] = useState("");
+  const restLogged = !!today.restDay;
+
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
   const tasksLeft = today.tasksToday.filter((t) => !t.done).length;
   const studyMin = (today.study.sessions ?? []).reduce((a, s) => a + s.durationMin, 0);
