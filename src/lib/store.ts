@@ -100,6 +100,7 @@ export interface CalendarEvent {
 
 export interface MemoryItem { id: string; text: string; dateKey: string; createdAt: string; }
 export interface GardenState { stage: number; lastGrowKey?: string; lastMsgKey?: string; lastMsgIdx?: number; }
+export interface MissedReminder { id: string; key: string; title: string; body?: string; scheduledAt: string; }
 
 export interface State {
   habits: Habit[];
@@ -114,6 +115,8 @@ export interface State {
   memoryJar?: MemoryItem[];
   garden?: GardenState;
   archivedHabits?: Habit[];
+  firedReminders?: Record<string, number>; // key -> ms fired at
+  missedReminders?: MissedReminder[];
 }
 
 const KEY = "life_state_v1";
@@ -137,6 +140,8 @@ function emptyState(): State {
     memoryJar: [],
     garden: { stage: 0 },
     archivedHabits: [],
+    firedReminders: {},
+    missedReminders: [],
   };
 }
 
@@ -156,6 +161,8 @@ function load(): State {
   if (!base.memoryJar) base.memoryJar = [];
   if (!base.garden) base.garden = { stage: 0 };
   if (!base.archivedHabits) base.archivedHabits = [];
+  if (!base.firedReminders) base.firedReminders = {};
+  if (!base.missedReminders) base.missedReminders = [];
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
