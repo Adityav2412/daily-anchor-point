@@ -78,7 +78,7 @@ function HabitsPage() {
                   <button
                     onClick={() => actions.toggleHabit(h.id, true)}
                     aria-label="Done"
-                    className={`h-9 w-9 rounded-full flex items-center justify-center press ${done ? "bg-success text-[#1A1C1A]" : "bg-card/60 border border-foreground/15"}`}
+                    className={`h-9 w-9 rounded-full flex items-center justify-center press ${done ? "bg-success text-[#1A1C1A] animate-bounce-soft" : "bg-card/60 border border-foreground/15"}`}
                   >{done ? <Check size={16} className="animate-tick" /> : <Check size={14} className="opacity-40" />}</button>
                   <button
                     onClick={() => { setReasonFor(reasonFor === h.id ? null : h.id); setReasonOther(""); }}

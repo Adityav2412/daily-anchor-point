@@ -68,7 +68,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
           </button>
         </div>
       </header>
-      <main className="px-5">{children}</main>
+      <main className="px-5 animate-page-in">{children}</main>
       {alertMsg && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-[92%] w-md card-sage rounded-2xl px-4 py-3 shadow-lg animate-fade-up">
           <div className="font-display text-sm">{alertMsg.title}</div>

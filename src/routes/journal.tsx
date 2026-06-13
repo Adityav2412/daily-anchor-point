@@ -72,7 +72,7 @@ function JournalPage() {
           </header>
 
           {surprise && (
-            <div className="card-cream p-5 text-center mb-3 animate-fade-up">
+            <div key={surprise.text + surprise.dateKey} className="card-cream p-5 text-center mb-3 animate-surprise">
               <div className="text-3xl mb-2">🏆</div>
               <p className="font-display text-[20px] leading-snug">"{surprise.text}"</p>
               <p className="text-[11px] text-muted-foreground mt-2">{formatISTDate(surprise.dateKey)}</p>

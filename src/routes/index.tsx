@@ -126,7 +126,7 @@ function TodayPage() {
                 <button
                   key={m.value}
                   onClick={() => actions.setMood(m.value)}
-                  className={`flex flex-col items-center gap-2 rounded-3xl py-5 press transition ${active ? "bg-sage text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+                  className={`flex flex-col items-center gap-2 rounded-3xl py-5 press transition ${active ? "bg-sage text-[#1A1C1A] animate-mood-pop" : "bg-muted text-foreground/70"}`}
                 >
                   <span className="text-[34px] leading-none">{m.emoji}</span>
                   <span className="text-[11px] font-medium">{m.label}</span>
