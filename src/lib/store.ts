@@ -476,6 +476,27 @@ export const actions = {
   clearMissedReminders() {
     store.set((s) => { s.missedReminders = []; return s; });
   },
+  exportData(): string {
+    return JSON.stringify(store.get(), null, 2);
+  },
+  importData(json: string): { ok: boolean; error?: string } {
+    try {
+      const parsed = JSON.parse(json);
+      if (!parsed || typeof parsed !== "object" || !parsed.days || !Array.isArray(parsed.habits)) {
+        return { ok: false, error: "File doesn't look like a LIFE backup." };
+      }
+      const merged: State = { ...emptyState(), ...parsed, version: STATE_VERSION, dataStartKey: LIFE_START_KEY };
+      state = merged;
+      persist();
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || "Invalid JSON." };
+    }
+  },
+  resetAll() {
+    state = emptyState();
+    persist();
+  },
 };
 
 export function getSettings(): Settings {
