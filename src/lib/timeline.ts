@@ -66,6 +66,7 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
   }
 
   for (const e of s.events ?? []) {
+    if (e.date < LIFE_START_KEY) continue;
     push(e.date, { id: `e-${e.id}`, kind: "event", dateKey: e.date, emoji: "📅", text: e.name, detail: e.note });
   }
 
