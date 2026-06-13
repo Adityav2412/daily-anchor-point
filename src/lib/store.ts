@@ -40,6 +40,7 @@ export interface TimeLogEntry { id: string; activity: string; start: string; end
 export interface TimeSession { id: string; category: string; startISO: string; endISO: string; durationMin: number; }
 export interface Intention { goal: string; energy: number; habitId?: string; setAt: string; }
 export interface ToughDay { note?: string; at: string; }
+export interface RestDay { note?: string; at: string; }
 export interface NightSetup { sleepIntention?: string; at: string; }
 export interface PlanStatus { done: boolean; reason?: string; }
 
