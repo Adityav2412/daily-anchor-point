@@ -32,7 +32,7 @@ export function detectStudyTask(title: string): boolean {
   const t = title.toLowerCase();
   return STUDY_KEYWORDS.some((k) => new RegExp(`\\b${k}`, "i").test(t));
 }
-export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; geminiApiKey?: string; }
+export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; geminiApiKey?: string; notificationsEnabled?: boolean; }
 export interface StudyEntry { subject: string; minutes: number; }
 export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; feeling?: "hard" | "okay" | "good"; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
