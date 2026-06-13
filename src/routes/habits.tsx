@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, type HabitCategory, type Habit } from "@/lib/store";
-import { lastNDays, formatISTDate } from "@/lib/ist";
+import { currentWeekKeysIST, formatISTDate, istDateKey } from "@/lib/ist";
 import { Plus, X, Check, Archive, RotateCcw, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/habits")({
@@ -30,7 +30,9 @@ function HabitsPage() {
   const archived = useStore((s) => s.archivedHabits ?? []);
   const today = useToday();
   const days = useStore((s) => s.days);
-  const last7 = useMemo(() => lastNDays(7), []);
+  const weekKeys = useMemo(() => currentWeekKeysIST(), []);
+  const todayKey = istDateKey();
+  const WEEK_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
   const [tab, setTab] = useState<HabitCategory | "all">("all");
   const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -66,7 +68,7 @@ function HabitsPage() {
             const log = today.habits[h.id];
             const done = !!log?.done;
             const missed = log && !log.done;
-            const week = last7.map((k) => ({ k, log: days[k]?.habits[h.id] }));
+            const week = weekKeys.map((k) => ({ k, log: days[k]?.habits[h.id], isFuture: k > todayKey, isToday: k === todayKey }));
             return (
               <div key={h.id} className={`p-4 transition ${done ? "card-sage" : missed ? "card-peach" : "card-paper"}`}>
                 <div className="flex items-center gap-3">
@@ -92,13 +94,27 @@ function HabitsPage() {
                   />
                 </div>
 
-                {/* 7-day dot strip */}
-                <div className="flex items-center gap-1.5 mt-3">
-                  {week.map((d) => {
-                    const c = !d.log ? "bg-foreground/15" : d.log.done ? "bg-success" : "bg-amber";
-                    return <span key={d.k} className={`h-2 w-2 rounded-full ${c}`} title={formatISTDate(d.k)} />;
+                {/* This week, Monday-first */}
+                <div className="flex items-center gap-2 mt-3">
+                  {week.map((d, i) => {
+                    const c = d.isFuture
+                      ? "bg-foreground/8"
+                      : !d.log
+                        ? "bg-foreground/15"
+                        : d.log.done
+                          ? "bg-success"
+                          : "bg-amber";
+                    return (
+                      <div key={d.k} className="flex flex-col items-center gap-1">
+                        <span className="text-[9px] text-muted-foreground/70 leading-none">{WEEK_LABELS[i]}</span>
+                        <span
+                          className={`h-2 w-2 rounded-full ${c} ${d.isToday ? "ring-2 ring-foreground/30 ring-offset-1 ring-offset-transparent" : ""}`}
+                          title={formatISTDate(d.k)}
+                        />
+                      </div>
+                    );
                   })}
-                  <span className="text-[10px] text-muted-foreground ml-1">
+                  <span className="text-[10px] text-muted-foreground ml-auto self-end">
                     {week.filter((d) => d.log?.done).length}/7
                   </span>
                 </div>
