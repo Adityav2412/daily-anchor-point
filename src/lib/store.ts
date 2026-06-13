@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { istDateKey, lastNDays, nowIST } from "./ist";
+import { istDateKey, istMidnightMs, lastNDays, nowIST } from "./ist";
 
 export type HabitCategory = "non-negotiable" | "adapting" | "mental" | "physical" | "custom";
 export interface Habit {
@@ -100,6 +100,7 @@ export interface CalendarEvent {
 
 export interface MemoryItem { id: string; text: string; dateKey: string; createdAt: string; }
 export interface GardenState { stage: number; lastGrowKey?: string; lastMsgKey?: string; lastMsgIdx?: number; }
+export interface MissedReminder { id: string; key: string; title: string; body?: string; scheduledAt: string; }
 
 export interface State {
   habits: Habit[];
@@ -114,6 +115,8 @@ export interface State {
   memoryJar?: MemoryItem[];
   garden?: GardenState;
   archivedHabits?: Habit[];
+  firedReminders?: Record<string, number>; // key -> ms fired at
+  missedReminders?: MissedReminder[];
 }
 
 const KEY = "life_state_v1";
@@ -137,6 +140,8 @@ function emptyState(): State {
     memoryJar: [],
     garden: { stage: 0 },
     archivedHabits: [],
+    firedReminders: {},
+    missedReminders: [],
   };
 }
 
@@ -156,6 +161,8 @@ function load(): State {
   if (!base.memoryJar) base.memoryJar = [];
   if (!base.garden) base.garden = { stage: 0 };
   if (!base.archivedHabits) base.archivedHabits = [];
+  if (!base.firedReminders) base.firedReminders = {};
+  if (!base.missedReminders) base.missedReminders = [];
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
@@ -458,6 +465,12 @@ export const actions = {
   removeEvent(id: string) {
     store.set((s) => { s.events = (s.events ?? []).filter((e) => e.id !== id); return s; });
   },
+  dismissMissedReminder(id: string) {
+    store.set((s) => { s.missedReminders = (s.missedReminders ?? []).filter((m) => m.id !== id); return s; });
+  },
+  clearMissedReminders() {
+    store.set((s) => { s.missedReminders = []; return s; });
+  },
 };
 
 export function getSettings(): Settings {
@@ -467,12 +480,47 @@ export function getSettings(): Settings {
 function notify(title: string, body?: string) {
   if (typeof window === "undefined") return;
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    try { new Notification(title, { body, icon: "/favicon.ico", tag: title }); return; } catch {}
+    try { new Notification(title, { body, icon: "/icon-192.png", badge: "/icon-192.png", tag: title }); return; } catch {}
   }
   try {
     const ev = new CustomEvent("daily:in-app-alert", { detail: { title, body } });
     window.dispatchEvent(ev);
   } catch {}
+}
+
+// Fire fresh notifications within this window. Older reminders go to the
+// persistent Missed Reminders queue instead, so nothing is silently dropped.
+const FRESH_WINDOW_MS = 2 * 60 * 1000;
+// Drop anything older than this so a long absence doesn't flood the queue.
+const STALE_DROP_MS = 7 * 24 * 60 * 60 * 1000;
+
+function fireOrMiss(rkey: string, scheduledMs: number, title: string, body?: string) {
+  const s = store.get();
+  if ((s.firedReminders ?? {})[rkey]) return;
+  const now = Date.now();
+  const age = now - scheduledMs;
+  if (age > STALE_DROP_MS) {
+    store.set((st) => { st.firedReminders = { ...(st.firedReminders ?? {}), [rkey]: now }; return st; });
+    return;
+  }
+  if (age <= FRESH_WINDOW_MS) {
+    notify(title, body);
+  } else {
+    store.set((st) => {
+      st.missedReminders = st.missedReminders ?? [];
+      if (!st.missedReminders.some((m) => m.key === rkey)) {
+        st.missedReminders.unshift({
+          id: crypto.randomUUID(),
+          key: rkey,
+          title,
+          body,
+          scheduledAt: new Date(scheduledMs).toISOString(),
+        });
+      }
+      return st;
+    });
+  }
+  store.set((st) => { st.firedReminders = { ...(st.firedReminders ?? {}), [rkey]: now }; return st; });
 }
 
 export function startMidnightWatcher() {
@@ -484,17 +532,37 @@ export function startMidnightWatcher() {
 }
 
 function checkReminders() {
-  const key = istDateKey();
-  const day = store.get().days[key];
-  if (!day) return;
+  const s = store.get();
   const now = Date.now();
-  for (const t of day.tasksToday) {
-    if (t.done || !t.remindAt || t.reminded) continue;
-    const ts = new Date(t.remindAt).getTime();
-    if (!isNaN(ts) && ts <= now && now - ts < 15 * 60 * 1000) {
-      notify("Reminder: " + t.title, "Tap to open your tasks.");
+  const key = istDateKey();
+  const day = s.days[key];
+  if (day) {
+    for (const t of day.tasksToday) {
+      if (t.done || !t.remindAt) continue;
+      const ts = new Date(t.remindAt).getTime();
+      if (isNaN(ts) || ts > now) continue;
+      const rkey = `task:${t.id}:${t.remindAt}`;
+      if ((s.firedReminders ?? {})[rkey]) continue;
+      fireOrMiss(rkey, ts, "Reminder: " + t.title, "Tap to open your tasks.");
       actions.markTaskReminded(t.id);
     }
+  }
+  // Calendar event reminders
+  for (const e of s.events ?? []) {
+    if (e.reminderOffsetMin === undefined || e.reminderOffsetMin === null) continue;
+    const eventMs = istMidnightMs(e.date);
+    const scheduled = eventMs - e.reminderOffsetMin * 60_000;
+    if (scheduled > now) continue;
+    const rkey = `event:${e.id}:${e.reminderOffsetMin}`;
+    if ((s.firedReminders ?? {})[rkey]) continue;
+    const body = e.reminderOffsetMin === 0
+      ? "Happening today."
+      : e.reminderOffsetMin === 1440
+        ? "Tomorrow."
+        : e.reminderOffsetMin === 4320
+          ? "In 3 days."
+          : "In 1 week.";
+    fireOrMiss(rkey, scheduled, "📅 " + e.name, body);
   }
 }
 

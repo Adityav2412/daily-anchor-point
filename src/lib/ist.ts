@@ -44,6 +44,28 @@ export function lastNDays(n: number): string[] {
   return out;
 }
 
+// Monday-first week containing today (IST). Returns 7 date keys Mon→Sun.
+export function currentWeekKeysIST(): string[] {
+  const today = nowIST();
+  const dow = today.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+  const daysFromMonday = (dow + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysFromMonday);
+  const out: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    out.push(istDateKey(d));
+  }
+  return out;
+}
+
+// Convert "YYYY-MM-DD" IST date to the ms timestamp of IST midnight that day.
+export function istMidnightMs(dateKey: string): number {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return Date.UTC(y, m - 1, d, 0, 0, 0) - IST_OFFSET_MIN * 60_000;
+}
+
 export function istYesterdayKey(): string {
   const d = nowIST();
   d.setDate(d.getDate() - 1);

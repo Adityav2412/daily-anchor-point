@@ -1,11 +1,22 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { BottomNav } from "./BottomNav";
-import { startMidnightWatcher } from "@/lib/store";
+import { actions, startMidnightWatcher, useStore } from "@/lib/store";
 import { recomputeGarden } from "@/lib/garden";
 import { nowIST } from "@/lib/ist";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Leaf, WifiOff } from "lucide-react";
+import { Moon, Leaf, WifiOff, Bell, X } from "lucide-react";
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diffMs / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} minute${m === 1 ? "" : "s"} ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+}
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   useEffect(() => {
@@ -16,6 +27,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
   const [pretty, setPretty] = useState<{ weekday: string; rest: string }>({ weekday: "", rest: "" });
   const [alertMsg, setAlertMsg] = useState<{ title: string; body?: string } | null>(null);
   const [online, setOnline] = useState(true);
+  const missed = useStore((s) => s.missedReminders ?? []);
   const { theme, toggle } = useTheme();
   useEffect(() => {
     const d = nowIST();
@@ -68,7 +80,35 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
           </button>
         </div>
       </header>
-      <main className="px-5 animate-page-in">{children}</main>
+      <main className="px-5 animate-page-in">
+        {missed.length > 0 && (
+          <div className="mb-4 space-y-2 animate-fade-up">
+            {missed.slice(0, 3).map((m) => (
+              <div key={m.id} className="card-peach rounded-2xl px-4 py-3 flex items-start gap-3">
+                <Bell size={16} className="mt-1 shrink-0 opacity-70" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] uppercase tracking-wider text-foreground/60 font-medium">Missed Reminder</div>
+                  <div className="font-display text-[17px] leading-tight mt-0.5 truncate">{m.title.replace(/^(Reminder: |📅 )/, "")}</div>
+                  <div className="text-xs text-foreground/60 mt-0.5">{relativeTime(m.scheduledAt)}</div>
+                </div>
+                <button
+                  onClick={() => actions.dismissMissedReminder(m.id)}
+                  aria-label="Dismiss"
+                  className="h-8 w-8 rounded-full bg-card/60 flex items-center justify-center press shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            {missed.length > 3 && (
+              <button onClick={() => actions.clearMissedReminders()} className="text-xs text-muted-foreground underline">
+                Clear all {missed.length}
+              </button>
+            )}
+          </div>
+        )}
+        {children}
+      </main>
       {alertMsg && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-[92%] w-md card-sage rounded-2xl px-4 py-3 shadow-lg animate-fade-up">
           <div className="font-display text-sm">{alertMsg.title}</div>
