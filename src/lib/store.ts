@@ -505,6 +505,8 @@ export function getSettings(): Settings {
 
 function notify(title: string, body?: string) {
   if (typeof window === "undefined") return;
+  const enabled = store.get().settings?.notificationsEnabled !== false;
+  if (!enabled) return;
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     try { new Notification(title, { body, icon: "/icon-192.png", badge: "/icon-192.png", tag: title }); return; } catch {}
   }
