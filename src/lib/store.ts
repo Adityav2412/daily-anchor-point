@@ -462,6 +462,14 @@ export const actions = {
     const key = istDateKey();
     store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].toughDay = { note: note?.trim() || undefined, at: new Date().toISOString() }; return s; });
   },
+  logRestDay(note?: string) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].restDay = { note: note?.trim() || undefined, at: new Date().toISOString() }; return s; });
+  },
+  clearRestDay() {
+    const key = istDateKey();
+    store.set((s) => { if (s.days[key]) s.days[key].restDay = undefined; return s; });
+  },
   setSettings(patch: Partial<Settings>) {
     store.set((s) => { s.settings = { eodReminderEnabled: true, eodMinutesBefore: 30, ...(s.settings || {}), ...patch }; return s; });
   },
