@@ -84,8 +84,17 @@ function TimelinePage() {
           {orderedDates.length === 0 && (
             <div className="card-sage p-8 text-center space-y-2">
               <div className="text-[34px]">🌱</div>
-              <p className="font-display text-[20px] tracking-tight">Your story starts today.</p>
-              <p className="text-[14px] text-foreground/65 leading-relaxed">Check in, log a win, or write a journal entry — it'll show up here.</p>
+              {istDateKey() < LIFE_START_KEY ? (
+                <>
+                  <p className="font-display text-[20px] tracking-tight">Your LIFE journey begins on 15 June 2026.</p>
+                  <p className="text-[14px] text-foreground/65 leading-relaxed">Your first check-in, win, study session, habit completion, or journal entry will appear here once the journey begins.</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-display text-[20px] tracking-tight">Your timeline is ready.</p>
+                  <p className="text-[14px] text-foreground/65 leading-relaxed">Your first check-in, win, study session, habit completion, or journal entry will appear here.</p>
+                </>
+              )}
             </div>
           )}
           {orderedDates.map((dk) => {
