@@ -36,6 +36,7 @@ export function recomputeGarden() {
   const s = store.get();
   let logged = 0;
   for (const k of Object.keys(s.days)) {
+    if (k < LIFE_START_KEY) continue;
     if (dayHasActivity(s, k)) logged++;
   }
   const newStage = Math.min(MAX_STAGE, Math.floor(logged / 5));
