@@ -9,26 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StudyRouteImport } from './routes/study'
-import { Route as PlannerRouteImport } from './routes/planner'
-import { Route as HistoryRouteImport } from './routes/history'
+import { Route as JournalRouteImport } from './routes/journal'
 import { Route as HabitsRouteImport } from './routes/habits'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StudyRoute = StudyRouteImport.update({
   id: '/study',
   path: '/study',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlannerRoute = PlannerRouteImport.update({
-  id: '/planner',
-  path: '/planner',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HabitsRoute = HabitsRouteImport.update({
@@ -51,53 +57,86 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/habits': typeof HabitsRoute
-  '/history': typeof HistoryRoute
-  '/planner': typeof PlannerRoute
+  '/journal': typeof JournalRoute
   '/study': typeof StudyRoute
+  '/tasks': typeof TasksRoute
+  '/timeline': typeof TimelineRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/habits': typeof HabitsRoute
-  '/history': typeof HistoryRoute
-  '/planner': typeof PlannerRoute
+  '/journal': typeof JournalRoute
   '/study': typeof StudyRoute
+  '/tasks': typeof TasksRoute
+  '/timeline': typeof TimelineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/habits': typeof HabitsRoute
-  '/history': typeof HistoryRoute
-  '/planner': typeof PlannerRoute
+  '/journal': typeof JournalRoute
   '/study': typeof StudyRoute
+  '/tasks': typeof TasksRoute
+  '/timeline': typeof TimelineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/habits' | '/history' | '/planner' | '/study'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/habits'
+    | '/journal'
+    | '/study'
+    | '/tasks'
+    | '/timeline'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/habits' | '/history' | '/planner' | '/study'
+  to:
+    | '/'
+    | '/calendar'
+    | '/habits'
+    | '/journal'
+    | '/study'
+    | '/tasks'
+    | '/timeline'
   id:
     | '__root__'
     | '/'
     | '/calendar'
     | '/habits'
-    | '/history'
-    | '/planner'
+    | '/journal'
     | '/study'
+    | '/tasks'
+    | '/timeline'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   HabitsRoute: typeof HabitsRoute
-  HistoryRoute: typeof HistoryRoute
-  PlannerRoute: typeof PlannerRoute
+  JournalRoute: typeof JournalRoute
   StudyRoute: typeof StudyRoute
+  TasksRoute: typeof TasksRoute
+  TimelineRoute: typeof TimelineRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/study': {
       id: '/study'
       path: '/study'
@@ -105,18 +144,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/planner': {
-      id: '/planner'
-      path: '/planner'
-      fullPath: '/planner'
-      preLoaderRoute: typeof PlannerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/habits': {
@@ -147,9 +179,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   HabitsRoute: HabitsRoute,
-  HistoryRoute: HistoryRoute,
-  PlannerRoute: PlannerRoute,
+  JournalRoute: JournalRoute,
   StudyRoute: StudyRoute,
+  TasksRoute: TasksRoute,
+  TimelineRoute: TimelineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

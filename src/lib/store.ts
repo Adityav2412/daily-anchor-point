@@ -1,10 +1,31 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { istDateKey, lastNDays, nowIST } from "./ist";
 
-export type HabitCategory = "non-negotiable" | "adapting";
-export interface Habit { id: string; name: string; category: HabitCategory; createdAt: string; }
+export type HabitCategory = "non-negotiable" | "adapting" | "mental" | "physical" | "custom";
+export interface Habit {
+  id: string;
+  name: string;
+  category: HabitCategory;
+  icon?: string;
+  createdAt: string;
+}
 export interface HabitLog { done: boolean; reason?: string; }
-export interface TaskItem { id: string; title: string; priority: "normal" | "high"; done: boolean; createdAt: string; remindAt?: string; reminded?: boolean; isStudy?: boolean; }
+export type ReminderOffset = 0 | 15 | 60 | 1440;
+export type EventOffset = 0 | 1440 | 4320 | 10080;
+export type TaskCategory = "health" | "personal" | "study" | "general";
+export interface TaskItem {
+  id: string;
+  title: string;
+  priority: "normal" | "high";
+  done: boolean;
+  createdAt: string;
+  remindAt?: string;
+  reminded?: boolean;
+  isStudy?: boolean;
+  category?: TaskCategory;
+  reminderOffsetMin?: ReminderOffset;
+  dueDate?: string; // YYYY-MM-DD for Upcoming tasks
+}
 
 const STUDY_KEYWORDS = ["learn", "read", "study", "revise", "revision", "practice", "chapter", "topic", "lecture", "notes", "exam", "syllabus", "assignment", "homework"];
 export function detectStudyTask(title: string): boolean {
@@ -13,7 +34,7 @@ export function detectStudyTask(title: string): boolean {
 }
 export interface Settings { eodReminderEnabled: boolean; eodMinutesBefore: number; geminiApiKey?: string; }
 export interface StudyEntry { subject: string; minutes: number; }
-export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; }
+export interface StudySession { id: string; subject: string; startISO: string; endISO: string; durationMin: number; feeling?: "hard" | "okay" | "good"; }
 export interface TimeBlock { id: string; label: string; kind: "study" | "work" | "habits" | "rest" | "free"; start: string; end: string; done?: boolean; reason?: string; notified?: boolean; }
 export interface TimeLogEntry { id: string; activity: string; start: string; end: string; }
 export interface TimeSession { id: string; category: string; startISO: string; endISO: string; durationMin: number; }
@@ -21,6 +42,16 @@ export interface Intention { goal: string; energy: number; habitId?: string; set
 export interface ToughDay { note?: string; at: string; }
 export interface NightSetup { sleepIntention?: string; at: string; }
 export interface PlanStatus { done: boolean; reason?: string; }
+
+export type Mood = "difficult" | "okay" | "good" | "great";
+export type Energy = "low" | "medium" | "high";
+
+export interface JournalEntry {
+  feeling?: string;
+  wentWell?: string;
+  difficult?: string;
+  tomorrow?: string;
+}
 
 export interface DayData {
   habits: Record<string, HabitLog>;
@@ -33,22 +64,40 @@ export interface DayData {
     energy?: number;
     win?: string;
     reflection?: string;
-    planStatus?: PlanStatus; // status of yesterday's plan carried forward
+    planStatus?: PlanStatus;
   };
   tasksToday: TaskItem[];
   tasksTomorrow: TaskItem[];
+  tasksUpcoming?: TaskItem[];
   availableHours?: number;
   blocks: TimeBlock[];
   timeLog: TimeLogEntry[];
   timeSessions: TimeSession[];
   intention?: Intention;
-  intentionText?: string; // "Aaj ka irada" — one-line daily intention
+  intentionText?: string;
   toughDay?: ToughDay;
   nightSetup?: NightSetup;
   lastRolloverKey?: string;
+
+  // LIFE additions
+  mood?: Mood;
+  energy?: Energy;
+  focus?: string;
+  journal?: JournalEntry;
 }
 
-export interface CalendarEvent { id: string; name: string; date: string; note?: string; createdAt: string; }
+export interface CalendarEvent {
+  id: string;
+  name: string;
+  date: string;
+  note?: string;
+  category?: string;
+  reminderOffsetMin?: EventOffset;
+  createdAt: string;
+}
+
+export interface MemoryItem { id: string; text: string; dateKey: string; createdAt: string; }
+export interface GardenState { stage: number; lastGrowKey?: string; lastMsgKey?: string; lastMsgIdx?: number; }
 
 export interface State {
   habits: Habit[];
@@ -58,13 +107,17 @@ export interface State {
   dataStartKey?: string;
   customCategories?: string[];
   events?: CalendarEvent[];
-}
 
+  // LIFE additions
+  memoryJar?: MemoryItem[];
+  garden?: GardenState;
+  archivedHabits?: Habit[];
+}
 
 const KEY = "focusflow_state_v1";
 
 function emptyDay(): DayData {
-  return { habits: {}, study: { entries: [], sessions: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], blocks: [], timeLog: [], timeSessions: [] };
+  return { habits: {}, study: { entries: [], sessions: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], tasksUpcoming: [], blocks: [], timeLog: [], timeSessions: [] };
 }
 
 const EMPTY_DAY = emptyDay();
@@ -79,6 +132,7 @@ function backfillDay(d: Partial<DayData> | undefined): DayData {
     study: { tomorrowPlan: "", ...(d.study ?? {}), entries: d.study?.entries ?? [], sessions: d.study?.sessions ?? [] },
     tasksToday: d.tasksToday ?? [],
     tasksTomorrow: d.tasksTomorrow ?? [],
+    tasksUpcoming: d.tasksUpcoming ?? [],
     blocks: d.blocks ?? [],
     timeLog: d.timeLog ?? [],
     timeSessions: d.timeSessions ?? [],
@@ -87,32 +141,6 @@ function backfillDay(d: Partial<DayData> | undefined): DayData {
 
 function load(): State {
   if (typeof window === "undefined") return { habits: [], days: {} };
-  
-  // One-time database reset for June 15, 2026
-  const resetKey = "focusflow_june15_reset_v2";
-  if (localStorage.getItem(resetKey) !== "true") {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as State;
-        parsed.days = {}; // Wipe history
-        parsed.dataStartKey = "2026-06-15"; // Set start key
-        parsed.eodNotifiedKey = undefined;
-        localStorage.setItem(KEY, JSON.stringify(parsed));
-      } else {
-        const initial: State = {
-          habits: [
-            { id: crypto.randomUUID(), name: "Drink water", category: "non-negotiable", createdAt: new Date().toISOString() },
-            { id: crypto.randomUUID(), name: "10 min walk", category: "adapting", createdAt: new Date().toISOString() },
-          ],
-          days: {},
-          dataStartKey: "2026-06-15"
-        };
-        localStorage.setItem(KEY, JSON.stringify(initial));
-      }
-      localStorage.setItem(resetKey, "true");
-    } catch {}
-  }
 
   let parsed: State | null = null;
   try {
@@ -121,8 +149,9 @@ function load(): State {
   } catch {}
   const base: State = parsed ?? {
     habits: [
-      { id: crypto.randomUUID(), name: "Drink water", category: "non-negotiable", createdAt: new Date().toISOString() },
-      { id: crypto.randomUUID(), name: "10 min walk", category: "adapting", createdAt: new Date().toISOString() },
+      { id: crypto.randomUUID(), name: "Medication", category: "mental", icon: "💊", createdAt: new Date().toISOString() },
+      { id: crypto.randomUUID(), name: "Drink water", category: "physical", icon: "💧", createdAt: new Date().toISOString() },
+      { id: crypto.randomUUID(), name: "10 min walk", category: "physical", icon: "🚶", createdAt: new Date().toISOString() },
     ],
     days: {},
   };
@@ -132,6 +161,30 @@ function load(): State {
   if (!base.dataStartKey) base.dataStartKey = istDateKey();
   if (!base.customCategories) base.customCategories = [];
   if (!base.events) base.events = [];
+  if (!base.memoryJar) base.memoryJar = [];
+  if (!base.garden) base.garden = { stage: 0 };
+  if (!base.archivedHabits) base.archivedHabits = [];
+
+  // Backfill old wins → memory jar (one-time)
+  try {
+    const seen = new Set(base.memoryJar.map((m) => `${m.dateKey}|${m.text}`));
+    for (const k of Object.keys(base.days)) {
+      const w = base.days[k].study.win?.trim();
+      if (w && !seen.has(`${k}|${w}`)) {
+        base.memoryJar.push({ id: crypto.randomUUID(), text: w, dateKey: k, createdAt: new Date().toISOString() });
+        seen.add(`${k}|${w}`);
+      }
+    }
+    base.memoryJar.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  } catch {}
+
+  // Default icons for legacy habits
+  for (const h of base.habits) {
+    if (!h.icon) {
+      const n = h.name.toLowerCase();
+      h.icon = n.includes("water") ? "💧" : n.includes("walk") ? "🚶" : n.includes("med") ? "💊" : n.includes("sleep") ? "😴" : n.includes("meditat") ? "🧘" : "🌿";
+    }
+  }
 
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
@@ -145,11 +198,6 @@ function persist() {
   listeners.forEach((l) => l());
 }
 
-// ── Cross-tab sync ────────────────────────────────────────────────────────────
-// When another browser tab writes to localStorage (different JS context),
-// the current tab's in-memory `state` becomes stale. The native "storage"
-// event fires in all OTHER tabs when localStorage changes, so we can pick
-// that up here and update in-memory state + notify all React subscribers.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
     if (e.key !== KEY || !e.newValue) return;
@@ -160,6 +208,9 @@ if (typeof window !== "undefined") {
       incoming.days = fixed;
       if (!incoming.customCategories) incoming.customCategories = [];
       if (!incoming.events) incoming.events = [];
+      if (!incoming.memoryJar) incoming.memoryJar = [];
+      if (!incoming.garden) incoming.garden = { stage: 0 };
+      if (!incoming.archivedHabits) incoming.archivedHabits = [];
       state = incoming;
       listeners.forEach((l) => l());
     } catch {}
@@ -188,6 +239,12 @@ export const store = {
     if (yDay && yDay.tasksTomorrow.length && !state.days[today].tasksToday.some((t) => yDay.tasksTomorrow.find((x) => x.id === t.id))) {
       state.days[today].tasksToday = [...state.days[today].tasksToday, ...yDay.tasksTomorrow];
     }
+    // promote upcoming tasks whose dueDate is today
+    if (yDay && yDay.tasksUpcoming?.length) {
+      const due = yDay.tasksUpcoming.filter((t) => t.dueDate === today);
+      if (due.length) state.days[today].tasksToday.push(...due);
+      state.days[yest].tasksUpcoming = yDay.tasksUpcoming.filter((t) => t.dueDate !== today);
+    }
     state.days[today].lastRolloverKey = today;
     persist();
   },
@@ -210,11 +267,35 @@ export function yesterdayKey(): string {
 }
 
 export const actions = {
-  addHabit(name: string, category: HabitCategory) {
-    store.set((s) => { s.habits.push({ id: crypto.randomUUID(), name, category, createdAt: new Date().toISOString() }); return s; });
+  addHabit(name: string, category: HabitCategory, icon?: string) {
+    store.set((s) => { s.habits.push({ id: crypto.randomUUID(), name, category, icon: icon || "🌿", createdAt: new Date().toISOString() }); return s; });
+  },
+  updateHabit(id: string, patch: Partial<Habit>) {
+    store.set((s) => { const h = s.habits.find((x) => x.id === id); if (h) Object.assign(h, patch); return s; });
   },
   removeHabit(id: string) {
     store.set((s) => { s.habits = s.habits.filter((h) => h.id !== id); return s; });
+  },
+  archiveHabit(id: string) {
+    store.set((s) => {
+      const h = s.habits.find((x) => x.id === id);
+      if (h) {
+        s.archivedHabits = s.archivedHabits ?? [];
+        s.archivedHabits.push(h);
+        s.habits = s.habits.filter((x) => x.id !== id);
+      }
+      return s;
+    });
+  },
+  restoreHabit(id: string) {
+    store.set((s) => {
+      const h = (s.archivedHabits ?? []).find((x) => x.id === id);
+      if (h) {
+        s.habits.push(h);
+        s.archivedHabits = (s.archivedHabits ?? []).filter((x) => x.id !== id);
+      }
+      return s;
+    });
   },
   toggleHabit(habitId: string, done: boolean, reason?: string) {
     const key = istDateKey();
@@ -224,6 +305,45 @@ export const actions = {
       return s;
     });
   },
+
+  setMood(mood: Mood) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].mood = mood; return s; });
+  },
+  setEnergy(energy: Energy) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].energy = energy; return s; });
+  },
+  setFocus(text: string) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].focus = text.trim() || undefined; return s; });
+  },
+  setJournal(patch: Partial<JournalEntry>, dateKey?: string) {
+    const key = dateKey ?? istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      s.days[key].journal = { ...(s.days[key].journal ?? {}), ...patch };
+      return s;
+    });
+  },
+  addMemory(text: string, dateKey?: string) {
+    const dk = dateKey ?? istDateKey();
+    store.set((s) => {
+      s.memoryJar = s.memoryJar ?? [];
+      s.memoryJar.unshift({ id: crypto.randomUUID(), text: text.trim(), dateKey: dk, createdAt: new Date().toISOString() });
+      return s;
+    });
+  },
+  updateMemory(id: string, text: string) {
+    store.set((s) => { const m = (s.memoryJar ?? []).find((x) => x.id === id); if (m) m.text = text.trim(); return s; });
+  },
+  removeMemory(id: string) {
+    store.set((s) => { s.memoryJar = (s.memoryJar ?? []).filter((m) => m.id !== id); return s; });
+  },
+  setGarden(patch: Partial<GardenState>) {
+    store.set((s) => { s.garden = { ...(s.garden ?? { stage: 0 }), ...patch }; return s; });
+  },
+
   setStudy(patch: Partial<DayData["study"]>) {
     const key = istDateKey();
     store.set((s) => {
@@ -234,11 +354,7 @@ export const actions = {
   },
   addStudyEntry(e: StudyEntry) {
     const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      s.days[key].study.entries.push(e);
-      return s;
-    });
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].study.entries.push(e); return s; });
   },
   removeStudyEntry(idx: number) {
     const key = istDateKey();
@@ -252,7 +368,6 @@ export const actions = {
       const id = crypto.randomUUID();
       s.days[key].study.sessions.push({ ...sess, id });
       s.days[key].study.studiedToday = true;
-      // Mirror into Time Tracker so Time + Stats reflect study automatically.
       if (!s.days[key].timeSessions) s.days[key].timeSessions = [];
       s.days[key].timeSessions.push({ id, category: "Study", startISO: sess.startISO, endISO: sess.endISO, durationMin: sess.durationMin });
       return s;
@@ -268,24 +383,7 @@ export const actions = {
   },
   setPlanStatus(status: PlanStatus | undefined) {
     const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      s.days[key].study.planStatus = status;
-      return s;
-    });
-  },
-  addTimeSession(sess: Omit<TimeSession, "id">) {
-    const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      if (!s.days[key].timeSessions) s.days[key].timeSessions = [];
-      s.days[key].timeSessions.push({ ...sess, id: crypto.randomUUID() });
-      return s;
-    });
-  },
-  removeTimeSession(id: string) {
-    const key = istDateKey();
-    store.set((s) => { s.days[key].timeSessions = (s.days[key].timeSessions ?? []).filter((x) => x.id !== id); return s; });
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].study.planStatus = status; return s; });
   },
   addCustomCategory(name: string) {
     store.set((s) => {
@@ -295,17 +393,20 @@ export const actions = {
       return s;
     });
   },
-  addTask(scope: "today" | "tomorrow", title: string, priority: "normal" | "high", isStudy?: boolean, remindAt?: string): string {
+  addTask(scope: "today" | "tomorrow" | "upcoming", title: string, priority: "normal" | "high", isStudy?: boolean, remindAt?: string, extras?: { category?: TaskCategory; reminderOffsetMin?: ReminderOffset; dueDate?: string }): string {
     const key = istDateKey();
     const id = crypto.randomUUID();
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
       const study = isStudy ?? detectStudyTask(title);
-      const t: TaskItem = { id, title, priority, done: false, createdAt: new Date().toISOString(), isStudy: study, remindAt: remindAt || undefined, reminded: false };
+      const t: TaskItem = {
+        id, title, priority, done: false, createdAt: new Date().toISOString(),
+        isStudy: study, remindAt: remindAt || undefined, reminded: false,
+        category: extras?.category, reminderOffsetMin: extras?.reminderOffsetMin, dueDate: extras?.dueDate,
+      };
       if (scope === "today") s.days[key].tasksToday.push(t);
-      else s.days[key].tasksTomorrow.push(t);
-      // If a tomorrow task is a study task, append its title to today's tomorrowPlan
-      // so it surfaces in tomorrow's Study tab as TODAY'S PLAN.
+      else if (scope === "tomorrow") s.days[key].tasksTomorrow.push(t);
+      else { s.days[key].tasksUpcoming = s.days[key].tasksUpcoming ?? []; s.days[key].tasksUpcoming!.push(t); }
       if (scope === "tomorrow" && study) {
         const existing = (s.days[key].study.tomorrowPlan ?? "").trim();
         const lines = existing ? existing.split("\n").map((l) => l.replace(/^•\s*/, "").trim()) : [];
@@ -317,113 +418,27 @@ export const actions = {
     });
     return id;
   },
-  setTaskStudy(scope: "today" | "tomorrow", id: string, isStudy: boolean) {
+  toggleTask(scope: "today" | "tomorrow" | "upcoming", id: string) {
     const key = istDateKey();
     store.set((s) => {
-      const arr = scope === "today" ? s.days[key].tasksToday : s.days[key].tasksTomorrow;
-      const t = arr.find((x) => x.id === id);
-      if (!t) return s;
-      t.isStudy = isStudy;
-      if (scope === "tomorrow") {
-        const existing = (s.days[key].study.tomorrowPlan ?? "").trim();
-        const lines = existing ? existing.split("\n") : [];
-        const marker = `• ${t.title.trim()}`;
-        if (isStudy) {
-          if (!lines.some((l) => l.replace(/^•\s*/, "").trim() === t.title.trim())) {
-            s.days[key].study.tomorrowPlan = (existing ? existing + "\n" : "") + marker;
-          }
-        } else {
-          s.days[key].study.tomorrowPlan = lines.filter((l) => l.replace(/^•\s*/, "").trim() !== t.title.trim()).join("\n");
-        }
-      }
-      return s;
-    });
-  },
-  toggleTask(scope: "today" | "tomorrow", id: string) {
-    const key = istDateKey();
-    store.set((s) => {
-      const arr = scope === "today" ? s.days[key].tasksToday : s.days[key].tasksTomorrow;
+      const arr = scope === "today" ? s.days[key].tasksToday : scope === "tomorrow" ? s.days[key].tasksTomorrow : (s.days[key].tasksUpcoming ?? []);
       const t = arr.find((x) => x.id === id); if (t) t.done = !t.done;
       return s;
     });
   },
-  removeTask(scope: "today" | "tomorrow", id: string) {
+  removeTask(scope: "today" | "tomorrow" | "upcoming", id: string) {
     const key = istDateKey();
     store.set((s) => {
       if (scope === "today") s.days[key].tasksToday = s.days[key].tasksToday.filter((t) => t.id !== id);
-      else s.days[key].tasksTomorrow = s.days[key].tasksTomorrow.filter((t) => t.id !== id);
+      else if (scope === "tomorrow") s.days[key].tasksTomorrow = s.days[key].tasksTomorrow.filter((t) => t.id !== id);
+      else s.days[key].tasksUpcoming = (s.days[key].tasksUpcoming ?? []).filter((t) => t.id !== id);
       return s;
     });
   },
-  setAvailableHours(h: number) {
-    const key = istDateKey();
-    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].availableHours = h; return s; });
-  },
-  addBlock(b: Omit<TimeBlock, "id">) {
-    const key = istDateKey();
-    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].blocks.push({ ...b, id: crypto.randomUUID() }); return s; });
-  },
-  updateBlock(id: string, patch: Partial<TimeBlock>) {
-    const key = istDateKey();
-    store.set((s) => { const b = s.days[key].blocks.find((x) => x.id === id); if (b) Object.assign(b, patch); return s; });
-  },
-  removeBlock(id: string) {
-    const key = istDateKey();
-    store.set((s) => { s.days[key].blocks = s.days[key].blocks.filter((b) => b.id !== id); return s; });
-  },
-  addTimeLog(entry: Omit<TimeLogEntry, "id">) {
+  setTaskReminder(scope: "today" | "tomorrow" | "upcoming", id: string, remindAt: string | null) {
     const key = istDateKey();
     store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      if (!s.days[key].timeLog) s.days[key].timeLog = [];
-      s.days[key].timeLog.push({ ...entry, id: crypto.randomUUID() });
-      return s;
-    });
-  },
-  removeTimeLog(id: string) {
-    const key = istDateKey();
-    store.set((s) => { s.days[key].timeLog = (s.days[key].timeLog ?? []).filter((t) => t.id !== id); return s; });
-  },
-  setIntention(intent: Omit<Intention, "setAt">) {
-    const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      s.days[key].intention = { ...intent, setAt: new Date().toISOString() };
-      return s;
-    });
-  },
-  setIntentionText(text: string) {
-    const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      s.days[key].intentionText = text.trim() || undefined;
-      return s;
-    });
-  },
-  clearIntention() {
-    const key = istDateKey();
-    store.set((s) => { if (s.days[key]) s.days[key].intention = undefined; return s; });
-  },
-  logToughDay(note?: string) {
-    const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      s.days[key].toughDay = { note: note?.trim() || undefined, at: new Date().toISOString() };
-      return s;
-    });
-  },
-  setNightSetup(sleepIntention?: string) {
-    const key = istDateKey();
-    store.set((s) => {
-      if (!s.days[key]) s.days[key] = emptyDay();
-      s.days[key].nightSetup = { sleepIntention: sleepIntention?.trim() || undefined, at: new Date().toISOString() };
-      return s;
-    });
-  },
-  setTaskReminder(scope: "today" | "tomorrow", id: string, remindAt: string | null) {
-    const key = istDateKey();
-    store.set((s) => {
-      const arr = scope === "today" ? s.days[key].tasksToday : s.days[key].tasksTomorrow;
+      const arr = scope === "today" ? s.days[key].tasksToday : scope === "tomorrow" ? s.days[key].tasksTomorrow : (s.days[key].tasksUpcoming ?? []);
       const t = arr.find((x) => x.id === id);
       if (t) { t.remindAt = remindAt || undefined; t.reminded = false; }
       return s;
@@ -437,6 +452,14 @@ export const actions = {
       return s;
     });
   },
+  setIntentionText(text: string) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].intentionText = text.trim() || undefined; return s; });
+  },
+  logToughDay(note?: string) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].toughDay = { note: note?.trim() || undefined, at: new Date().toISOString() }; return s; });
+  },
   setSettings(patch: Partial<Settings>) {
     store.set((s) => { s.settings = { eodReminderEnabled: true, eodMinutesBefore: 30, ...(s.settings || {}), ...patch }; return s; });
   },
@@ -446,19 +469,20 @@ export const actions = {
   markEodNotified(key: string) {
     store.set((s) => { s.eodNotifiedKey = key; return s; });
   },
-  addEvent(name: string, date: string, note?: string) {
-
+  addEvent(name: string, date: string, note?: string, category?: string, reminderOffsetMin?: EventOffset) {
     store.set((s) => {
       if (!s.events) s.events = [];
-      s.events.push({ id: crypto.randomUUID(), name: name.trim(), date, note: note?.trim() || undefined, createdAt: new Date().toISOString() });
+      s.events.push({ id: crypto.randomUUID(), name: name.trim(), date, note: note?.trim() || undefined, category, reminderOffsetMin, createdAt: new Date().toISOString() });
       return s;
     });
+  },
+  updateEvent(id: string, patch: Partial<CalendarEvent>) {
+    store.set((s) => { const e = (s.events ?? []).find((x) => x.id === id); if (e) Object.assign(e, patch); return s; });
   },
   removeEvent(id: string) {
     store.set((s) => { s.events = (s.events ?? []).filter((e) => e.id !== id); return s; });
   },
 };
-
 
 export function getSettings(): Settings {
   return store.get().settings ?? { eodReminderEnabled: true, eodMinutesBefore: 30 };
@@ -469,7 +493,6 @@ function notify(title: string, body?: string) {
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     try { new Notification(title, { body, icon: "/favicon.ico", tag: title }); return; } catch {}
   }
-  // In-app fallback when notifications are not permitted.
   try {
     const ev = new CustomEvent("daily:in-app-alert", { detail: { title, body } });
     window.dispatchEvent(ev);
@@ -478,10 +501,7 @@ function notify(title: string, body?: string) {
 
 export function startMidnightWatcher() {
   if (typeof window === "undefined") return;
-  const tick = () => {
-    store.rolloverIfNeeded();
-    checkReminders();
-  };
+  const tick = () => { store.rolloverIfNeeded(); checkReminders(); };
   tick();
   const interval = setInterval(tick, 20 * 1000);
   return () => clearInterval(interval);
@@ -498,19 +518,6 @@ function checkReminders() {
     if (!isNaN(ts) && ts <= now && now - ts < 15 * 60 * 1000) {
       notify("Reminder: " + t.title, "Tap to open your tasks.");
       actions.markTaskReminded(t.id);
-    }
-  }
-  const settings = getSettings();
-  if (settings.eodReminderEnabled && store.get().eodNotifiedKey !== key) {
-    const ist = nowIST();
-    const endOfDay = new Date(ist); endOfDay.setHours(23, 59, 0, 0);
-    const triggerAt = endOfDay.getTime() - settings.eodMinutesBefore * 60 * 1000;
-    if (ist.getTime() >= triggerAt) {
-      const incomplete = day.tasksToday.filter((t) => !t.done);
-      if (incomplete.length > 0) {
-        notify(`${incomplete.length} task${incomplete.length === 1 ? "" : "s"} still open`, incomplete.slice(0, 3).map((t) => "• " + t.title).join("\n"));
-      }
-      actions.markEodNotified(key);
     }
   }
 }

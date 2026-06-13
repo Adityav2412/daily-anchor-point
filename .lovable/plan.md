@@ -4,9 +4,13 @@ A staged rebuild of the current app. No new project, no backend changes; existin
 
 ## What changes vs. what stays
 
-**Stays:** localStorage store, IST utilities, existing habits / study sessions / tasks / events / intention / win / journal fields, Vercel config, `public/manifest.webmanifest`, `public/sw.js`, install metadata.
+**Stays:** localStorage store, IST utilities, existing habits / study sessions / tasks / events / intention / win fields, Vercel config, `public/manifest.webmanifest`, `public/sw.js`, install metadata.
 
-**Changes:** visual system, navigation (5 → 7 tabs), Today layout, replacement of streak language with a "garden" growth model, addition of mood/energy/journal/memory jar/timeline + AI reflections.
+**Removed entirely:** the old `Time` tab (`/planner`) and the `Stats` / `History` tab (`/history`). They had separate AI Reflections and analytics blocks — all of that now lives inside Timeline. No `/planner`, `/history`, `/stats`, or `/analytics` routes remain.
+
+**Final navigation (the only 7 tabs):** `Today · Habits · Study · Tasks · Calendar · Journal · Timeline`. Timeline is the single place for life history, monthly summary, AI reflections, search, and filters.
+
+**Changes:** visual system, navigation rebuilt to the 7 tabs above, Today layout, replacement of streak language with a "garden" growth model, addition of mood/energy/journal/memory jar/timeline + AI reflections inside Timeline.
 
 ## Design system
 

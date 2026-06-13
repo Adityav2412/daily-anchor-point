@@ -32,76 +32,90 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-lavender: var(--lavender);
   --color-amber: var(--amber);
-  --color-amber-soft: var(--amber-soft);
 }
 
-/* Beige — warm paper (default) */
+/* Warm off-white — LIFE default */
 :root {
   --radius: 1.25rem;
-  --background: #F5F0E8;
-  --foreground: #2C2C2C;
-  --card: #FFFDF7;
-  --card-foreground: #2C2C2C;
-  --popover: #FFFDF7;
-  --popover-foreground: #2C2C2C;
-  --primary: #8B6F47;
-  --primary-foreground: #FFFDF7;
-  --secondary: #EDE5D6;
-  --secondary-foreground: #2C2C2C;
-  --muted: #EDE5D6;
-  --muted-foreground: #7A6E5E;
-  --accent: #8B6F47;
-  --accent-foreground: #FFFDF7;
-  --destructive: #C84A3A;
-  --destructive-foreground: #FFFFFF;
-  --success: #5BA572;
-  --border: rgba(44,44,44,0.08);
-  --input: rgba(44,44,44,0.1);
-  --ring: #8B6F47;
-  --amber: #F5A623;
-  --amber-soft: rgba(245,166,35,0.16);
-  --card-shadow: 0 4px 20px -10px rgba(139,111,71,0.18);
+  --background: #F5F1EA;
+  --foreground: #3A3A37;
+  --card: #FFFFFF;
+  --card-foreground: #3A3A37;
+  --popover: #FFFFFF;
+  --popover-foreground: #3A3A37;
+  --primary: #6F8F73;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EFEAE0;
+  --secondary-foreground: #3A3A37;
+  --muted: #EFEAE0;
+  --muted-foreground: #7A7770;
+  --accent: #C8BBDD;
+  --accent-foreground: #3A3A37;
+  --destructive: #E8B26B;
+  --destructive-foreground: #3A3A37;
+  --success: #A8C9A0;
+  --border: rgba(58,58,55,0.08);
+  --input: rgba(58,58,55,0.1);
+  --ring: #9CB89F;
 
-  --pastel-sky:      #E6EEF7;
-  --pastel-mint:     #E4EFE4;
-  --pastel-peach:    #F7E8D7;
+  --sage: #9CB89F;
+  --sage-soft: rgba(156,184,159,0.18);
+  --lavender: #C8BBDD;
+  --lavender-soft: rgba(200,187,221,0.28);
+  --amber: #E8B26B;
+  --amber-soft: rgba(232,178,107,0.22);
+
+  --card-shadow: 0 6px 18px rgba(60,60,55,0.06);
+
+  --pastel-sage:     #E4EEE3;
   --pastel-lavender: #ECE6F4;
-  --pastel-butter:   #F7EFD0;
-  --pastel-blush:    #F4DCD9;
+  --pastel-peach:    #F6E6D3;
+  --pastel-cream:    #F5EEDD;
+  --pastel-sky:      #E6EEF3;
+  --pastel-blush:    #F2DFD9;
 }
 
 .dark {
-  --background: #0A0A0A;
-  --foreground: #F2EFE8;
-  --card: #1A1A1A;
-  --card-foreground: #F2EFE8;
-  --popover: #1A1A1A;
-  --popover-foreground: #F2EFE8;
-  --primary: #F2EFE8;
-  --primary-foreground: #0A0A0A;
-  --secondary: #232323;
-  --secondary-foreground: #F2EFE8;
-  --muted: #232323;
-  --muted-foreground: #9A938A;
-  --accent: #F5A623;
-  --accent-foreground: #0A0A0A;
-  --destructive: #E26B5A;
-  --destructive-foreground: #0A0A0A;
-  --success: #7EC68E;
-  --border: rgba(242,239,232,0.08);
-  --input: rgba(242,239,232,0.1);
-  --ring: #F5A623;
-  --amber: #F5A623;
-  --amber-soft: rgba(245,166,35,0.16);
-  --card-shadow: 0 4px 24px -10px rgba(0,0,0,0.5);
+  --background: #1A1C1A;
+  --foreground: #ECE7DC;
+  --card: #23262A;
+  --card-foreground: #ECE7DC;
+  --popover: #23262A;
+  --popover-foreground: #ECE7DC;
+  --primary: #9CB89F;
+  --primary-foreground: #1A1C1A;
+  --secondary: #2C2F31;
+  --secondary-foreground: #ECE7DC;
+  --muted: #2C2F31;
+  --muted-foreground: #9C9991;
+  --accent: #C8BBDD;
+  --accent-foreground: #1A1C1A;
+  --destructive: #E8B26B;
+  --destructive-foreground: #1A1C1A;
+  --success: #A8C9A0;
+  --border: rgba(236,231,220,0.08);
+  --input: rgba(236,231,220,0.1);
+  --ring: #9CB89F;
 
-  --pastel-sky:      #1B2330;
-  --pastel-mint:     #1B2A22;
-  --pastel-peach:    #2E2218;
-  --pastel-lavender: #221F2E;
-  --pastel-butter:   #2A2417;
-  --pastel-blush:    #2A1C1B;
+  --sage: #9CB89F;
+  --sage-soft: rgba(156,184,159,0.18);
+  --lavender: #C8BBDD;
+  --lavender-soft: rgba(200,187,221,0.18);
+  --amber: #E8B26B;
+  --amber-soft: rgba(232,178,107,0.18);
+
+  --card-shadow: 0 6px 18px rgba(0,0,0,0.32);
+
+  --pastel-sage:     #233028;
+  --pastel-lavender: #28253A;
+  --pastel-peach:    #2E2418;
+  --pastel-cream:    #2A2618;
+  --pastel-sky:      #1F262C;
+  --pastel-blush:    #2A1F1B;
 }
 
 @layer base {
@@ -115,33 +129,36 @@
   }
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.012em;
     font-weight: 500;
   }
-  ::selection { background: var(--amber); color: #0A0A0A; }
+  ::selection { background: var(--sage); color: #1A1C1A; }
 }
 
 @layer utilities {
   .card-paper {
     background: var(--card);
-    border: 1px solid var(--border);
     box-shadow: var(--card-shadow);
     border-radius: 24px;
   }
-  .card-sky      { background: var(--pastel-sky); border-radius: 24px; }
-  .card-mint     { background: var(--pastel-mint); border-radius: 24px; }
-  .card-peach    { background: var(--pastel-peach); border-radius: 24px; }
+  .card-sage     { background: var(--pastel-sage); border-radius: 24px; }
   .card-lavender { background: var(--pastel-lavender); border-radius: 24px; }
-  .card-butter   { background: var(--pastel-butter); border-radius: 24px; }
+  .card-peach    { background: var(--pastel-peach); border-radius: 24px; }
+  .card-cream    { background: var(--pastel-cream); border-radius: 24px; }
+  .card-sky      { background: var(--pastel-sky); border-radius: 24px; }
   .card-blush    { background: var(--pastel-blush); border-radius: 24px; }
-  .card-amber    { background: var(--amber-soft); border-radius: 24px; }
+  .card-sage-soft { background: var(--sage-soft); border-radius: 24px; }
+  .card-lavender-soft { background: var(--lavender-soft); border-radius: 24px; }
+  .card-amber-soft { background: var(--amber-soft); border-radius: 24px; }
 
+  .text-sage { color: var(--sage); }
+  .bg-sage { background: var(--sage); }
+  .bg-sage-deep { background: var(--primary); }
+  .text-lavender { color: var(--lavender); }
+  .bg-lavender { background: var(--lavender); }
   .text-amber { color: var(--amber); }
   .bg-amber { background: var(--amber); }
-  .bg-amber-soft { background: var(--amber-soft); }
-  .ring-amber { box-shadow: 0 0 0 1.5px var(--amber); }
-
-  .ring-ink { box-shadow: 0 0 0 1.5px var(--foreground); }
+  .ring-sage { box-shadow: 0 0 0 1.5px var(--sage); }
 
   @keyframes pop-in {
     0%   { opacity: 0; transform: translateY(8px) scale(0.98); }
@@ -156,23 +173,17 @@
   }
   .animate-tick { animation: tick-bounce 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-  @keyframes flicker {
-    0%, 100% { transform: translateY(0) rotate(-3deg); }
-    50%      { transform: translateY(-2px) rotate(3deg); }
-  }
-  .animate-flicker { animation: flicker 2.4s ease-in-out infinite; display: inline-block; transform-origin: bottom center; }
-
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   .animate-fade-up { animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-  @keyframes slide-in {
-    from { opacity: 0; transform: translateX(-10px); }
-    to   { opacity: 1; transform: translateX(0); }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-2deg); }
+    50%      { transform: rotate(2deg); }
   }
-  .animate-slide-in { animation: slide-in 0.4s ease-out both; }
+  .animate-sway { animation: sway 4.5s ease-in-out infinite; transform-origin: bottom center; }
 
   .stagger > * { animation: pop-in 0.45s cubic-bezier(0.22,1,0.36,1) both; }
   .stagger > *:nth-child(1) { animation-delay: 0.02s; }
