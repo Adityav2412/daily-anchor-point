@@ -157,6 +157,7 @@ function load(): State {
     if (raw) parsed = JSON.parse(raw);
   } catch {}
   const base: State = parsed ?? emptyState();
+  base.version = base.version ?? STATE_VERSION;
   base.habits = base.habits ?? [];
   base.days = base.days ?? {};
   base.dataStartKey = LIFE_START_KEY;
