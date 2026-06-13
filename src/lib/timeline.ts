@@ -1,7 +1,7 @@
 // Build a chronological timeline by merging mood, energy, wins, habits, study,
 // completed tasks, journal entries, and calendar events.
 
-import { store, studyMinutesFor, type State, type Habit } from "./store";
+import { store, studyMinutesFor, LIFE_START_KEY, type State, type Habit } from "./store";
 import { formatHM } from "./ist";
 
 export type TimelineKind = "mood" | "energy" | "habit" | "study" | "task" | "journal" | "event" | "win";
@@ -28,6 +28,7 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
   const push = (k: string, it: TimelineItem) => { (byDate[k] = byDate[k] ?? []).push(it); };
 
   for (const k of Object.keys(s.days)) {
+    if (k < LIFE_START_KEY) continue;
     const d = s.days[k];
     if (d.mood) push(k, { id: `${k}-mood`, kind: "mood", dateKey: k, emoji: MOOD_EMOJI[d.mood], text: `Mood: ${MOOD_LABEL[d.mood]}` });
     if (d.energy) push(k, { id: `${k}-energy`, kind: "energy", dateKey: k, emoji: ENERGY_EMOJI[d.energy], text: `Energy: ${d.energy}` });
@@ -65,6 +66,7 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
   }
 
   for (const e of s.events ?? []) {
+    if (e.date < LIFE_START_KEY) continue;
     push(e.date, { id: `e-${e.id}`, kind: "event", dateKey: e.date, emoji: "📅", text: e.name, detail: e.note });
   }
 

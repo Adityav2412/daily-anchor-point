@@ -1,7 +1,7 @@
 // Garden growth + daily companion message.
 // Stage never decreases. Growth pauses on missing days; nothing is lost.
 
-import { store, studyMinutesFor, type State } from "./store";
+import { store, studyMinutesFor, LIFE_START_KEY, type State } from "./store";
 import { istDateKey, lastNDays } from "./ist";
 
 const STAGES = ["🌱", "🌿", "🌵", "🍀", "🌸", "🌺", "🌻", "🌳"] as const;
@@ -36,6 +36,7 @@ export function recomputeGarden() {
   const s = store.get();
   let logged = 0;
   for (const k of Object.keys(s.days)) {
+    if (k < LIFE_START_KEY) continue;
     if (dayHasActivity(s, k)) logged++;
   }
   const newStage = Math.min(MAX_STAGE, Math.floor(logged / 5));
@@ -81,16 +82,15 @@ export function monthlySummary(): { goodDays: number; studyHours: number; wins: 
   let studyMin = 0;
   let wins = 0;
   for (const k of Object.keys(s.days)) {
-    if (!k.startsWith(ym)) continue;
+    if (!k.startsWith(ym) || k < LIFE_START_KEY) continue;
     const d = s.days[k];
     if (d.mood === "good" || d.mood === "great") goodDays++;
     studyMin += studyMinutesFor(d);
   }
   for (const m of s.memoryJar ?? []) {
-    if (m.dateKey.startsWith(ym)) wins++;
+    if (m.dateKey.startsWith(ym) && m.dateKey >= LIFE_START_KEY) wins++;
   }
-  // Growth = stages gained this month (approx: compare stage now to 30 days ago using activity proxy)
-  const monthKeys = lastNDays(30).filter((k) => k.startsWith(ym));
+  const monthKeys = lastNDays(30).filter((k) => k.startsWith(ym) && k >= LIFE_START_KEY);
   let monthLogged = 0;
   for (const k of monthKeys) if (dayHasActivity(s, k)) monthLogged++;
   const growth = Math.floor(monthLogged / 5);

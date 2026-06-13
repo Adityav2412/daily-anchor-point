@@ -118,6 +118,9 @@ export interface State {
 
 const KEY = "life_state_v1";
 
+// Day 1 of the LIFE journey. Nothing before this date is shown or counted.
+export const LIFE_START_KEY = "2026-06-15";
+
 function emptyDay(): DayData {
   return { habits: {}, study: { entries: [], sessions: [], tomorrowPlan: "" }, tasksToday: [], tasksTomorrow: [], tasksUpcoming: [], blocks: [], timeLog: [], timeSessions: [] };
 }
@@ -128,7 +131,7 @@ function emptyState(): State {
   return {
     habits: [],
     days: {},
-    dataStartKey: istDateKey(),
+    dataStartKey: LIFE_START_KEY,
     customCategories: [],
     events: [],
     memoryJar: [],
@@ -145,10 +148,9 @@ function load(): State {
     if (raw) parsed = JSON.parse(raw);
   } catch {}
   const base: State = parsed ?? emptyState();
-  // Ensure required fields exist (forward compatibility only — no legacy migration).
   base.habits = base.habits ?? [];
   base.days = base.days ?? {};
-  if (!base.dataStartKey) base.dataStartKey = istDateKey();
+  base.dataStartKey = LIFE_START_KEY;
   if (!base.customCategories) base.customCategories = [];
   if (!base.events) base.events = [];
   if (!base.memoryJar) base.memoryJar = [];
