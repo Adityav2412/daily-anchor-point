@@ -171,9 +171,7 @@ if (typeof window !== "undefined") {
     if (e.key !== KEY || !e.newValue) return;
     try {
       const incoming = JSON.parse(e.newValue) as State;
-      const fixed: Record<string, DayData> = {};
-      for (const k of Object.keys(incoming.days || {})) fixed[k] = backfillDay(incoming.days[k]);
-      incoming.days = fixed;
+      incoming.days = incoming.days ?? {};
       if (!incoming.customCategories) incoming.customCategories = [];
       if (!incoming.events) incoming.events = [];
       if (!incoming.memoryJar) incoming.memoryJar = [];
