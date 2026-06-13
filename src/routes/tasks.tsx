@@ -58,8 +58,10 @@ function TasksPage() {
 
         <div className="space-y-2.5 stagger">
           {list.length === 0 ? (
-            <div className="card-paper py-10 text-center text-sm text-muted-foreground italic">
-              Nothing here. That's okay.
+            <div className="card-paper p-8 text-center space-y-2">
+              <div className="text-[34px]">🌤</div>
+              <p className="font-display text-[20px] tracking-tight">Nothing planned {scope === "today" ? "today" : scope === "tomorrow" ? "for tomorrow" : "ahead"}.</p>
+              <p className="text-[14px] text-muted-foreground leading-relaxed">Maybe that's exactly what you need.</p>
             </div>
           ) : (
             list.map((t) => <TaskRow key={t.id} task={t} scope={scope} />)
