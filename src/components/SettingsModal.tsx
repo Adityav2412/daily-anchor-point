@@ -2,6 +2,16 @@ import { useRef, useState } from "react";
 import { actions, getSettings, useStore } from "@/lib/store";
 import { useTheme } from "@/hooks/use-theme";
 import { Download, Upload, RotateCcw, Moon, Sun, Bell, BellOff, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { theme, toggle } = useTheme();
@@ -11,6 +21,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmImport, setConfirmImport] = useState(false);
 
   if (!open) return null;
 
@@ -26,13 +37,15 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     const a = document.createElement("a");
     const stamp = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `life-backup-${stamp}.json`;
+    a.download = `LIFE_Backup_${stamp}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    flash("ok", "Backup downloaded.");
+    flash("ok", "Backup saved successfully");
   };
 
-  const onImportClick = () => fileRef.current?.click();
+  const onImportClick = () => {
+    setConfirmImport(true);
+  };
 
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -40,13 +53,16 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     const text = await f.text();
     const res = actions.importData(text);
     e.target.value = "";
-    if (res.ok) flash("ok", "Backup imported. Reloading…");
+    if (res.ok) flash("ok", "Data restored successfully");
     else flash("err", res.error || "Import failed.");
     if (res.ok) setTimeout(() => window.location.reload(), 800);
   };
 
   const onReset = () => {
-    if (!confirmReset) { setConfirmReset(true); return; }
+    setConfirmReset(true);
+  };
+
+  const doReset = () => {
     actions.resetAll();
     setConfirmReset(false);
     flash("ok", "All data cleared. Reloading…");
@@ -61,7 +77,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/40 animate-fade-up" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 animate-fade-up" onClick={onClose}>
       <div
         className="w-full sm:max-w-md max-h-[90vh] overflow-y-auto bg-card rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -115,21 +131,58 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         <Row
           icon={<RotateCcw size={18} />}
           title="Reset All Data"
-          subtitle={confirmReset ? "Tap again to permanently erase everything" : "Start completely fresh"}
-          actionLabel={confirmReset ? "Confirm reset" : "Reset"}
+          subtitle="Start completely fresh"
+          actionLabel="Reset"
           danger
           onClick={onReset}
         />
-        {confirmReset && (
-          <button onClick={() => setConfirmReset(false)} className="text-xs text-muted-foreground underline mt-1 ml-1">
-            Cancel
-          </button>
-        )}
 
         <div className="mt-6 text-[11px] text-muted-foreground text-center">
-          LIFE · State v{version}
+          LIFE — State v{version}
         </div>
       </div>
+
+      <AlertDialog open={confirmImport} onOpenChange={setConfirmImport}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Import Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace all current data with the contents of your backup file. Make sure your backup is valid.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmImport(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmImport(false);
+                setTimeout(() => fileRef.current?.click(), 0);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset All Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently erase all your data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmReset(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={doReset}
+              className="bg-amber/20 text-foreground hover:bg-amber/30"
+            >
+              Erase Everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
