@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { useStore } from "@/lib/store";
+import { useStore, LIFE_START_KEY } from "@/lib/store";
 import { buildTimeline, type TimelineKind, type TimelineItem } from "@/lib/timeline";
 import { monthlySummary } from "@/lib/garden";
-import { formatISTDate } from "@/lib/ist";
+import { formatISTDate, istDateKey } from "@/lib/ist";
 import { Search, Sparkles, WifiOff } from "lucide-react";
 
 export const Route = createFileRoute("/timeline")({
