@@ -1,7 +1,7 @@
 // Build a chronological timeline by merging mood, energy, wins, habits, study,
 // completed tasks, journal entries, and calendar events.
 
-import { store, studyMinutesFor, type State, type Habit } from "./store";
+import { store, studyMinutesFor, LIFE_START_KEY, type State, type Habit } from "./store";
 import { formatHM } from "./ist";
 
 export type TimelineKind = "mood" | "energy" | "habit" | "study" | "task" | "journal" | "event" | "win";
