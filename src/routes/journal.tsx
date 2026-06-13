@@ -81,8 +81,10 @@ function JournalPage() {
           )}
 
           {memory.length === 0 ? (
-            <div className="card-paper p-6 text-center text-sm text-muted-foreground italic">
-              Wins you log on Today will collect here.
+            <div className="card-cream p-7 text-center space-y-2">
+              <div className="text-[30px]">🫙</div>
+              <p className="font-display text-[19px] tracking-tight">Small wins live here.</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">Anything you log as a "win of the day" will collect over time.</p>
             </div>
           ) : (
             <div className="space-y-2">
