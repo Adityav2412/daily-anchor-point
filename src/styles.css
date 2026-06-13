@@ -200,4 +200,45 @@
 
   .hover-lift { transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s; }
   .hover-lift:hover { transform: translateY(-2px); }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.035); }
+  }
+  .animate-breathe { animation: breathe 5.5s ease-in-out infinite; }
+
+  @keyframes bounce-soft {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.15); }
+    70%  { transform: scale(0.96); }
+    100% { transform: scale(1); }
+  }
+  .animate-bounce-soft { animation: bounce-soft 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+
+  @keyframes mood-pop {
+    0%   { transform: scale(0.92); }
+    60%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .animate-mood-pop { animation: mood-pop 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+
+  @keyframes surprise-fade {
+    0%   { opacity: 0; transform: translateY(6px) scale(0.97); }
+    100% { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+  .animate-surprise { animation: surprise-fade 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-page-in { animation: page-in 0.32s cubic-bezier(0.22,1,0.36,1) both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-sway, .animate-breathe, .animate-pop, .animate-fade-up,
+    .animate-tick, .animate-bounce-soft, .animate-mood-pop,
+    .animate-surprise, .animate-page-in, .stagger > * {
+      animation: none !important;
+    }
+  }
 }

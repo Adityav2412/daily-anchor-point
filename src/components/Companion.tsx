@@ -5,7 +5,7 @@ export function Companion({ stage }: { stage: number }) {
   const label = stageLabel(stage);
   const msg = todaysMessage();
   return (
-    <div className="card-sage p-8 relative overflow-hidden text-center">
+    <div className="card-sage p-8 relative overflow-hidden text-center animate-breathe">
       <div className="mx-auto h-44 w-44 rounded-full bg-card/60 flex items-center justify-center text-[110px] leading-none animate-sway" aria-hidden>
         {emoji}
       </div>
