@@ -108,7 +108,11 @@ function CalendarPage() {
         <section>
           <h2 className="font-display text-lg mb-2 px-1">Upcoming</h2>
           {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-1 py-4 italic">Nothing on the horizon yet.</p>
+            <div className="card-paper p-7 text-center space-y-2">
+              <div className="text-[30px]">🍃</div>
+              <p className="font-display text-[19px] tracking-tight">No upcoming events.</p>
+              <p className="text-[13px] text-muted-foreground">Enjoy the breathing room.</p>
+            </div>
           ) : (
             <ul className="space-y-2 stagger">
               {upcoming.map((e) => (

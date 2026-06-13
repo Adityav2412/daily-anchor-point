@@ -40,6 +40,7 @@ export interface TimeLogEntry { id: string; activity: string; start: string; end
 export interface TimeSession { id: string; category: string; startISO: string; endISO: string; durationMin: number; }
 export interface Intention { goal: string; energy: number; habitId?: string; setAt: string; }
 export interface ToughDay { note?: string; at: string; }
+export interface RestDay { note?: string; at: string; }
 export interface NightSetup { sleepIntention?: string; at: string; }
 export interface PlanStatus { done: boolean; reason?: string; }
 
@@ -76,6 +77,7 @@ export interface DayData {
   intention?: Intention;
   intentionText?: string;
   toughDay?: ToughDay;
+  restDay?: RestDay;
   nightSetup?: NightSetup;
   lastRolloverKey?: string;
 
@@ -459,6 +461,14 @@ export const actions = {
   logToughDay(note?: string) {
     const key = istDateKey();
     store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].toughDay = { note: note?.trim() || undefined, at: new Date().toISOString() }; return s; });
+  },
+  logRestDay(note?: string) {
+    const key = istDateKey();
+    store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].restDay = { note: note?.trim() || undefined, at: new Date().toISOString() }; return s; });
+  },
+  clearRestDay() {
+    const key = istDateKey();
+    store.set((s) => { if (s.days[key]) s.days[key].restDay = undefined; return s; });
   },
   setSettings(patch: Partial<Settings>) {
     store.set((s) => { s.settings = { eodReminderEnabled: true, eodMinutesBefore: 30, ...(s.settings || {}), ...patch }; return s; });

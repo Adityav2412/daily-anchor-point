@@ -54,6 +54,11 @@ function TodayPage() {
   const [toughNote, setToughNote] = useState("");
   const toughLogged = !!today.toughDay;
 
+  const [restOpen, setRestOpen] = useState(false);
+  const [restMood, setRestMood] = useState<Mood>("okay");
+  const [restNote, setRestNote] = useState("");
+  const restLogged = !!today.restDay;
+
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
   const tasksLeft = today.tasksToday.filter((t) => !t.done).length;
   const studyMin = (today.study.sessions ?? []).reduce((a, s) => a + s.durationMin, 0);
@@ -86,7 +91,30 @@ function TodayPage() {
           <p className="font-display text-[32px] leading-tight tracking-tight mt-2">{greeting || "Hello, Akshay"}</p>
         </div>
 
-        {/* Aaj Ka Focus — prominent */}
+        {/* LIFE companion — calm first impression */}
+        <Companion stage={garden.stage} />
+
+        {/* Mood — emotional check-in comes before tracking */}
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">How are you feeling?</div>
+          <div className="grid grid-cols-4 gap-3">
+            {MOODS.map((m) => {
+              const active = today.mood === m.value;
+              return (
+                <button
+                  key={m.value}
+                  onClick={() => actions.setMood(m.value)}
+                  className={`flex flex-col items-center gap-2 rounded-3xl py-5 press transition ${active ? "bg-sage text-[#1A1C1A] animate-mood-pop" : "bg-muted text-foreground/70"}`}
+                >
+                  <span className="text-[34px] leading-none">{m.emoji}</span>
+                  <span className="text-[11px] font-medium">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Aaj Ka Focus — one gentle intention */}
         <div className="card-lavender p-7">
           <div className="flex items-center justify-between mb-3">
             <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/60">Aaj Ka Focus</div>
@@ -113,82 +141,122 @@ function TodayPage() {
           )}
         </div>
 
-        {/* LIFE companion */}
-        <Companion stage={garden.stage} />
+        {/* Rest Day banner — hides secondary sections */}
+        {restLogged && (
+          <div className="card-sage p-6 animate-fade-up">
+            <div className="text-center">
+              <div className="text-[44px] leading-none">🌿</div>
+              <p className="font-display text-[22px] tracking-tight mt-3">Today is a rest day.</p>
+              <p className="text-[15px] text-foreground/70 mt-2 leading-relaxed">No habits, no tasks, no pressure. Your check-in still counts.</p>
+              {today.restDay?.note && <p className="text-[14px] text-foreground/65 italic mt-3">"{today.restDay.note}"</p>}
+              <button
+                onClick={() => actions.clearRestDay()}
+                className="text-[12px] text-muted-foreground underline underline-offset-2 mt-4 press"
+              >End rest day</button>
+            </div>
+          </div>
+        )}
 
-        {/* Mood */}
-        <div className="card-paper p-6">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">How are you feeling?</div>
-          <div className="grid grid-cols-4 gap-3">
-            {MOODS.map((m) => {
-              const active = today.mood === m.value;
-              return (
+        {/* Secondary sections — hidden on rest days */}
+        {!restLogged && (
+          <>
+            {/* Energy */}
+            <div className="card-paper p-6">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Energy today</div>
+              <div className="flex gap-2.5">
+                {ENERGIES.map((e) => {
+                  const active = today.energy === e.value;
+                  return (
+                    <button
+                      key={e.value}
+                      onClick={() => actions.setEnergy(e.value)}
+                      className={`flex-1 rounded-full py-3.5 text-[15px] font-medium press transition ${active ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+                    >{e.label}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Daily snapshot */}
+            <div className="space-y-3">
+              <Stat label="Habits" value={`${habitDone} / ${habits.length}`} sublabel="completed today" to="/habits" />
+              <Stat label="Study" value={studyMin ? formatHM(studyMin) : "—"} sublabel={studyMin ? "today" : "no session yet"} to="/study" />
+              <Stat label="Tasks" value={String(tasksLeft)} sublabel="remaining" to="/tasks" />
+              <Stat
+                label="Upcoming"
+                value={upcoming ? labelDiff(upcomingDiff!) : "—"}
+                sublabel={upcoming?.name ?? "nothing scheduled"}
+                to="/calendar"
+              />
+            </div>
+
+            {/* Win of the day */}
+            <div className="card-cream p-6">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mb-3">Win of the day</div>
+              <input
+                value={winDraft}
+                onChange={(e) => setWinDraft(e.target.value)}
+                onBlur={saveWin}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="One small thing that went right…"
+                className="w-full bg-transparent text-[17px] outline-none placeholder:text-foreground/35"
+              />
+              {today.study.win && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
+            </div>
+          </>
+        )}
+
+        {/* Gentle options */}
+        {!toughLogged && !toughOpen && !restLogged && !restOpen && (
+          <div className="flex gap-3 justify-center pt-1">
+            <button
+              onClick={() => setRestOpen(true)}
+              className="text-[13px] text-muted-foreground underline underline-offset-2 py-2 hover:text-foreground transition"
+            >🌿 Rest day</button>
+            <span className="text-muted-foreground/40">·</span>
+            <button
+              onClick={() => setToughOpen(true)}
+              className="text-[13px] text-muted-foreground underline underline-offset-2 py-2 hover:text-foreground transition"
+            >Today was difficult</button>
+          </div>
+        )}
+
+        {restOpen && !restLogged && (
+          <div className="card-sage p-6 animate-fade-up">
+            <p className="font-display text-[22px] tracking-tight leading-tight">🌿 Rest day</p>
+            <p className="text-[15px] text-foreground/70 mt-2 leading-relaxed">Just check in. No habits, no tasks, no pressure. Today still counts.</p>
+            <div className="grid grid-cols-4 gap-2.5 mt-4">
+              {MOODS.map((m) => (
                 <button
                   key={m.value}
-                  onClick={() => actions.setMood(m.value)}
-                  className={`flex flex-col items-center gap-2 rounded-3xl py-5 press transition ${active ? "bg-sage text-[#1A1C1A] animate-mood-pop" : "bg-muted text-foreground/70"}`}
+                  onClick={() => setRestMood(m.value)}
+                  className={`flex flex-col items-center gap-1.5 rounded-2xl py-3.5 press transition ${restMood === m.value ? "bg-sage-deep text-primary-foreground" : "bg-card/60 text-foreground/70"}`}
                 >
-                  <span className="text-[34px] leading-none">{m.emoji}</span>
-                  <span className="text-[11px] font-medium">{m.label}</span>
+                  <span className="text-[26px] leading-none">{m.emoji}</span>
+                  <span className="text-[10px]">{m.label}</span>
                 </button>
-              );
-            })}
+              ))}
+            </div>
+            <textarea
+              value={restNote}
+              onChange={(e) => setRestNote(e.target.value)}
+              placeholder="A short note (optional)"
+              rows={3}
+              className="w-full mt-4 rounded-2xl bg-card/60 p-4 text-[15px] outline-none resize-none placeholder:text-foreground/40"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { actions.setMood(restMood); actions.logRestDay(restNote); setRestOpen(false); }}
+                className="flex-1 rounded-full bg-sage-deep text-primary-foreground py-3 text-[15px] font-medium press"
+              >Save rest day</button>
+              <button
+                onClick={() => setRestOpen(false)}
+                className="rounded-full bg-card/60 text-foreground/70 px-5 text-[15px] press"
+              >Cancel</button>
+            </div>
           </div>
-        </div>
-
-        {/* Energy */}
-        <div className="card-paper p-6">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Energy today</div>
-          <div className="flex gap-2.5">
-            {ENERGIES.map((e) => {
-              const active = today.energy === e.value;
-              return (
-                <button
-                  key={e.value}
-                  onClick={() => actions.setEnergy(e.value)}
-                  className={`flex-1 rounded-full py-3.5 text-[15px] font-medium press transition ${active ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
-                >{e.label}</button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Daily snapshot — large cards */}
-        <div className="space-y-3">
-          <Stat label="Habits" value={`${habitDone} / ${habits.length}`} sublabel="completed today" to="/habits" />
-          <Stat label="Study" value={studyMin ? formatHM(studyMin) : "—"} sublabel={studyMin ? "today" : "no session yet"} to="/study" />
-          <Stat label="Tasks" value={String(tasksLeft)} sublabel={tasksLeft === 1 ? "remaining" : "remaining"} to="/tasks" />
-          <Stat
-            label="Upcoming"
-            value={upcoming ? labelDiff(upcomingDiff!) : "—"}
-            sublabel={upcoming?.name ?? "nothing scheduled"}
-            to="/calendar"
-          />
-        </div>
-
-        {/* Win of the day */}
-        <div className="card-cream p-6">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mb-3">Win of the day</div>
-          <input
-            value={winDraft}
-            onChange={(e) => setWinDraft(e.target.value)}
-            onBlur={saveWin}
-            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-            placeholder="One small thing that went right…"
-            className="w-full bg-transparent text-[17px] outline-none placeholder:text-foreground/35"
-          />
-          {today.study.win && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
-        </div>
-
-        {/* Bad day mode */}
-        {!toughLogged && !toughOpen && (
-          <button
-            onClick={() => setToughOpen(true)}
-            className="block w-full text-center text-[13px] text-muted-foreground underline underline-offset-2 py-2 hover:text-foreground transition"
-          >
-            Today was difficult
-          </button>
         )}
+
         {!toughLogged && toughOpen && (
           <div className="card-paper p-6 animate-fade-up">
             <p className="font-display text-[22px] tracking-tight leading-tight">Some days are about getting through.</p>
@@ -224,7 +292,7 @@ function TodayPage() {
             </div>
           </div>
         )}
-        {toughLogged && (
+        {toughLogged && !restLogged && (
           <div className="card-sage-soft p-5 text-center text-[15px] text-foreground/75 italic">
             Some days are about getting through. That's enough.
           </div>

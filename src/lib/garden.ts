@@ -51,10 +51,12 @@ const MESSAGES = [
   "Nice to see you today.",
   "One step at a time.",
   "Thanks for checking in.",
-  "Rough day? Keep it simple.",
   "Small progress still counts.",
+  "You don't need a perfect day.",
+  "Be kind to yourself today.",
+  "Slow progress is still progress.",
+  "Today is enough.",
   "Glad you're here.",
-  "Take it gently.",
   "Showing up is the win.",
 ] as const;
 
