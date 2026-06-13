@@ -41,11 +41,11 @@ function JournalPage() {
 
   return (
     <AppShell title="Journal" subtitle="Lightweight reflection.">
-      <div className="space-y-4 stagger">
+      <div className="space-y-5 stagger">
         {/* Today's reflection */}
-        <div className="card-paper p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Today</div>
-          <div className="space-y-3">
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Today</div>
+          <div className="space-y-5">
             {QUESTIONS.map((q) => (
               <JournalField
                 key={q.key}
