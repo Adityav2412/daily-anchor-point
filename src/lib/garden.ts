@@ -47,7 +47,7 @@ export function todaysMessage(): string {
 
 export interface MonthlySummary {
   fullDays: number;
-  avgSleepMinutes: number;
+  sleepLogged: number; // count of days with a sleep entry — NOT a duration/score
   wins: number;
   tasksCompleted: number;
   growth: number;
@@ -62,12 +62,11 @@ export function monthlySummary(): MonthlySummary {
   let fullDays = 0;
   let wins = 0;
   let tasksCompleted = 0;
-  let sleepSum = 0;
-  let sleepDays = 0;
+  let sleepLogged = 0;
   for (const k of Object.keys(s.days)) {
     if (!k.startsWith(ym) || k < LIFE_START_KEY) continue;
     const d = s.days[k];
-    if (d.sleep?.durationMinutes) { sleepSum += d.sleep.durationMinutes; sleepDays++; }
+    if (d.sleep?.sleptAt || d.sleep?.wokeAt) sleepLogged++;
     tasksCompleted += d.tasksToday.filter((t) => t.done).length;
     tasksCompleted += (d.tasksUpcoming ?? []).filter((t) => t.done && (t.dueDate ?? k).startsWith(ym)).length;
     if (nn.length > 0) {
@@ -85,6 +84,6 @@ export function monthlySummary(): MonthlySummary {
   }
   const growth = monthGrown;
   const label = today.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const avgSleepMinutes = sleepDays ? Math.round(sleepSum / sleepDays) : 0;
-  return { fullDays, avgSleepMinutes, wins, tasksCompleted, growth, label };
+  return { fullDays, sleepLogged, wins, tasksCompleted, growth, label };
 }
+
