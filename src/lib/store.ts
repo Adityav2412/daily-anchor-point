@@ -367,6 +367,24 @@ export const actions = {
       return s;
     });
   },
+  // Single source of truth for "Win of the day": exactly one Memory Jar entry per IST date.
+  setTodayWin(text: string, dateKey?: string) {
+    const dk = dateKey ?? istDateKey();
+    const t = text.trim();
+    store.set((s) => {
+      s.memoryJar = s.memoryJar ?? [];
+      const existing = s.memoryJar.find((m) => m.dateKey === dk);
+      if (!t) {
+        if (existing) s.memoryJar = s.memoryJar.filter((m) => m.id !== existing.id);
+      } else if (existing) {
+        existing.text = t;
+      } else {
+        s.memoryJar.unshift({ id: crypto.randomUUID(), text: t, dateKey: dk, createdAt: new Date().toISOString() });
+      }
+      return s;
+    });
+  },
+
   updateMemory(id: string, text: string) {
     store.set((s) => { const m = (s.memoryJar ?? []).find((x) => x.id === id); if (m) m.text = text.trim(); return s; });
   },
