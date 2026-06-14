@@ -8,6 +8,7 @@ export interface Habit {
   category: HabitCategory;
   icon?: string;
   createdAt: string;
+  order?: number;
 }
 export interface HabitLog { done: boolean; reason?: string; }
 export type ReminderOffset = 0 | 15 | 60 | 1440;
