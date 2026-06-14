@@ -93,8 +93,8 @@ export interface DayData {
 export interface SleepData {
   sleptAt?: string;
   wokeAt?: string;
-  durationMinutes?: number;
 }
+
 
 export interface CalendarEvent {
   id: string;
