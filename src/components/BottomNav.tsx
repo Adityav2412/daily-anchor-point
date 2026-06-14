@@ -1,13 +1,10 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Sun, Leaf, BookOpen, CheckSquare, Calendar, NotebookPen, Clock } from "lucide-react";
+import { Sun, Leaf, CalendarDays, Clock } from "lucide-react";
 
 const items = [
   { to: "/", label: "Today", Icon: Sun },
   { to: "/habits", label: "Habits", Icon: Leaf },
-  { to: "/study", label: "Study", Icon: BookOpen },
-  { to: "/tasks", label: "Tasks", Icon: CheckSquare },
-  { to: "/calendar", label: "Calendar", Icon: Calendar },
-  { to: "/journal", label: "Journal", Icon: NotebookPen },
+  { to: "/agenda", label: "Agenda", Icon: CalendarDays },
   { to: "/timeline", label: "Timeline", Icon: Clock },
 ] as const;
 
@@ -29,7 +26,7 @@ export function BottomNav() {
               aria-label={t.label}
             >
               <Icon size={16} strokeWidth={2} />
-              {active && <span className="text-[8.5px] font-semibold tracking-wider uppercase mt-0.5">{t.label}</span>}
+              {active && <span className="text-[9px] font-semibold tracking-wider uppercase mt-0.5">{t.label}</span>}
             </Link>
           );
         })}
