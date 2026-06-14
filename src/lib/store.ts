@@ -86,6 +86,13 @@ export interface DayData {
   energy?: Energy;
   focus?: string;
   journal?: JournalEntry;
+  sleep?: SleepData;
+}
+
+export interface SleepData {
+  sleptAt?: string;
+  wokeAt?: string;
+  durationMinutes?: number;
 }
 
 export interface CalendarEvent {
