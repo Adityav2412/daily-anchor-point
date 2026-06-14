@@ -41,7 +41,7 @@ function TimelinePage() {
           <p className="font-display text-[26px] tracking-tight mt-1">{summary.label}</p>
           <div className="grid grid-cols-2 gap-4 mt-6">
             <SummaryRow emoji="🌳" label="Full forest days" value={String(summary.fullDays)} />
-            <SummaryRow emoji="😴" label="Avg sleep" value={summary.avgSleepMinutes ? formatHM(summary.avgSleepMinutes) : "—"} />
+            <SummaryRow emoji="😴" label="Sleep logged" value={String(summary.sleepLogged)} />
             <SummaryRow emoji="🏆" label="Wins" value={String(summary.wins)} />
             <SummaryRow emoji="✅" label="Tasks done" value={String(summary.tasksCompleted)} />
           </div>
