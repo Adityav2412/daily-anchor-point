@@ -94,37 +94,66 @@ function AgendaPage() {
   return (
     <AppShell title="Agenda" subtitle="Events and tasks, on a date.">
       <div className="space-y-5 stagger">
-        {/* Month grid */}
+        {/* Calendar */}
         <div className="card-paper p-4">
           <div className="flex items-center justify-between mb-3">
             <button onClick={() => navMonth(-1)} className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center press"><ChevronLeft size={14} /></button>
             <div className="font-display text-[18px]">{monthLabel}</div>
             <button onClick={() => navMonth(1)} className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center press"><ChevronRight size={14} /></button>
           </div>
+          <div className="flex justify-center mb-3">
+            <div className="inline-flex rounded-full bg-muted p-0.5">
+              <button onClick={() => setMode("week")} className={`text-[11px] px-3 py-1 rounded-full press ${mode === "week" ? "bg-sage text-[#1A1C1A] font-semibold" : "text-foreground/60"}`}>Week</button>
+              <button onClick={() => setMode("month")} className={`text-[11px] px-3 py-1 rounded-full press ${mode === "month" ? "bg-sage text-[#1A1C1A] font-semibold" : "text-foreground/60"}`}>Month</button>
+            </div>
+          </div>
           <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground mb-1">
             {["M","T","W","T","F","S","S"].map((d, i) => <div key={i}>{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((c, i) => {
-              if (!c) return <div key={i} />;
-              const isSel = c.k === selected;
-              const isToday = c.k === todayKey;
-              const dot = hasItems(c.k);
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelected(c.k)}
-                  className={`aspect-square rounded-xl text-[13px] flex flex-col items-center justify-center press transition ${
-                    isSel ? "bg-sage text-[#1A1C1A] font-semibold" : isToday ? "bg-lavender/40 text-foreground" : "hover:bg-muted/50"
-                  }`}
-                >
-                  <span>{c.d}</span>
-                  {dot && <span className={`mt-0.5 h-1 w-1 rounded-full ${isSel ? "bg-[#1A1C1A]" : "bg-sage-deep"}`} />}
-                </button>
-              );
-            })}
-          </div>
+          {mode === "month" ? (
+            <div className="grid grid-cols-7 gap-1">
+              {monthCells.map((c, i) => {
+                if (!c) return <div key={i} />;
+                const isSel = c.k === selected;
+                const isToday = c.k === todayKey;
+                const dot = hasItems(c.k);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setSelected(c.k)}
+                    className={`aspect-square rounded-xl text-[13px] flex flex-col items-center justify-center press transition ${
+                      isSel ? "bg-sage text-[#1A1C1A] font-semibold" : isToday ? "bg-lavender/40 text-foreground" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <span>{c.d}</span>
+                    {dot && <span className={`mt-0.5 h-1 w-1 rounded-full ${isSel ? "bg-[#1A1C1A]" : "bg-sage-deep"}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1">
+              {weekCells.map((c) => {
+                const isSel = c.k === selected;
+                const isToday = c.k === todayKey;
+                const dot = hasItems(c.k);
+                return (
+                  <button
+                    key={c.k}
+                    onClick={() => { setSelected(c.k); setViewYear(parseKey(c.k).y); setViewMonth(parseKey(c.k).m); }}
+                    className={`aspect-square rounded-xl text-[13px] flex flex-col items-center justify-center press transition ${
+                      isSel ? "bg-sage text-[#1A1C1A] font-semibold" : isToday ? "bg-lavender/40 text-foreground" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <span>{c.d}</span>
+                    {dot && <span className={`mt-0.5 h-1 w-1 rounded-full ${isSel ? "bg-[#1A1C1A]" : "bg-sage-deep"}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+
 
         {/* Selected day header */}
         <div className="flex items-center justify-between px-1">
