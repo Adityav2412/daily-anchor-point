@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { useStore, LIFE_START_KEY } from "@/lib/store";
+import { actions, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
 import { buildTimeline, type TimelineKind, type TimelineItem } from "@/lib/timeline";
 import { monthlySummary } from "@/lib/garden";
-import { formatISTDate, istDateKey } from "@/lib/ist";
-import { Search, Sparkles, WifiOff } from "lucide-react";
+import { formatISTDate, istDateKey, formatHM } from "@/lib/ist";
+import { Sparkles, WifiOff, Shuffle, Pencil, Trash2, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/timeline")({
   head: () => ({ meta: [{ title: "Timeline — LIFE" }] }),
@@ -14,9 +14,10 @@ export const Route = createFileRoute("/timeline")({
 
 const FILTERS: { v: TimelineKind | "all"; label: string }[] = [
   { v: "all", label: "All" },
+  { v: "forest", label: "Forest" },
   { v: "sleep", label: "Sleep" },
-  { v: "mood", label: "Mood" },
   { v: "habit", label: "Habits" },
+  { v: "missed", label: "Missed" },
   { v: "task", label: "Tasks" },
   { v: "event", label: "Events" },
   { v: "win", label: "Wins" },
@@ -24,19 +25,12 @@ const FILTERS: { v: TimelineKind | "all"; label: string }[] = [
 
 function TimelinePage() {
   const s = useStore((s) => s);
-  const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<TimelineKind | "all">("all");
   const timeline = useMemo(() => buildTimeline(s), [s]);
-  const summary = useMemo(() => monthlySummary(), [s.days, s.memoryJar]);
+  const summary = useMemo(() => monthlySummary(), [s.days, s.memoryJar, s.habits]);
 
   const orderedDates = useMemo(() => Object.keys(timeline).sort((a, b) => b.localeCompare(a)), [timeline]);
-
-  const matches = (it: TimelineItem) => {
-    if (filter !== "all" && it.kind !== filter) return false;
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return it.text.toLowerCase().includes(q) || (it.detail?.toLowerCase().includes(q) ?? false);
-  };
+  const matches = (it: TimelineItem) => filter === "all" || it.kind === filter;
 
   return (
     <AppShell title="Timeline" subtitle="A gentle record of your days.">
@@ -46,28 +40,21 @@ function TimelinePage() {
           <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/60">This month</div>
           <p className="font-display text-[26px] tracking-tight mt-1">{summary.label}</p>
           <div className="grid grid-cols-2 gap-4 mt-6">
-            <SummaryRow emoji="🙂" label="Good mood days" value={String(summary.goodDays)} />
-            <SummaryRow emoji="😴" label="Avg sleep" value={summary.avgSleepMinutes ? `${(summary.avgSleepMinutes/60).toFixed(1)}h` : "—"} />
+            <SummaryRow emoji="🌳" label="Full forest days" value={String(summary.fullDays)} />
+            <SummaryRow emoji="😴" label="Avg sleep" value={summary.avgSleepMinutes ? formatHM(summary.avgSleepMinutes) : "—"} />
             <SummaryRow emoji="🏆" label="Wins" value={String(summary.wins)} />
             <SummaryRow emoji="✅" label="Tasks done" value={String(summary.tasksCompleted)} />
-            <SummaryRow emoji="🌱" label="Garden growth" value={summary.growth ? `+${summary.growth}` : "—"} />
           </div>
         </div>
+
+        {/* Memory Jar */}
+        <MemoryJarCard />
 
         {/* AI Reflections */}
         <AIReflectionsCard />
 
-        {/* Search + filters */}
-        <div className="card-paper p-3 space-y-2">
-          <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-2">
-            <Search size={14} className="text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search your timeline…"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-foreground/40"
-            />
-          </div>
+        {/* Filters (no search) */}
+        <div className="card-paper p-3">
           <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1">
             {FILTERS.map((f) => (
               <button
@@ -87,12 +74,12 @@ function TimelinePage() {
               {istDateKey() < LIFE_START_KEY ? (
                 <>
                   <p className="font-display text-[20px] tracking-tight">Your LIFE journey begins on 15 June 2026.</p>
-                  <p className="text-[14px] text-foreground/65 leading-relaxed">Your first check-in, win, study session, habit completion, or journal entry will appear here once the journey begins.</p>
+                  <p className="text-[14px] text-foreground/65 leading-relaxed">Your first habit, win, or sleep log will appear here once the journey begins.</p>
                 </>
               ) : (
                 <>
                   <p className="font-display text-[20px] tracking-tight">Your timeline is ready.</p>
-                  <p className="text-[14px] text-foreground/65 leading-relaxed">Your first check-in, win, study session, habit completion, or journal entry will appear here.</p>
+                  <p className="text-[14px] text-foreground/65 leading-relaxed">Your first habit, win, or sleep log will appear here.</p>
                 </>
               )}
             </div>
@@ -133,6 +120,68 @@ function SummaryRow({ emoji, label, value }: { emoji: string; label: string; val
   );
 }
 
+function MemoryJarCard() {
+  const jar = useStore((s) => s.memoryJar ?? []);
+  const [surprise, setSurprise] = useState<MemoryItem | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+
+  const pickRandom = () => {
+    if (!jar.length) return;
+    setSurprise(jar[Math.floor(Math.random() * jar.length)]);
+  };
+
+  return (
+    <div className="card-cream p-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55">Memory jar</div>
+        <button
+          onClick={pickRandom}
+          disabled={!jar.length}
+          className="rounded-full bg-card/70 px-3 py-1.5 text-[11px] press flex items-center gap-1 disabled:opacity-40"
+        ><Shuffle size={11} /> Surprise me</button>
+      </div>
+      {surprise && (
+        <div className="rounded-2xl bg-card/80 p-4 mb-3 animate-fade-up">
+          <div className="text-[10px] uppercase tracking-wider text-foreground/55">{formatISTDate(surprise.dateKey)}</div>
+          <p className="text-[15px] mt-1">{surprise.text}</p>
+        </div>
+      )}
+      {jar.length === 0 ? (
+        <p className="text-[13px] text-foreground/55 italic">Your wins land here. Log one on Today.</p>
+      ) : (
+        <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {jar.slice(0, 50).map((m) => (
+            <li key={m.id} className="rounded-2xl bg-card/60 p-3">
+              {editing === m.id ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    className="flex-1 rounded-full bg-card/80 px-3 py-1.5 text-[13px] outline-none"
+                  />
+                  <button onClick={() => { actions.updateMemory(m.id, draft); setEditing(null); }} className="text-sage-deep press"><Check size={14} /></button>
+                  <button onClick={() => setEditing(null)} className="text-muted-foreground press"><X size={14} /></button>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] uppercase tracking-wider text-foreground/55">{formatISTDate(m.dateKey)}</div>
+                    <p className="text-[14px] mt-0.5">{m.text}</p>
+                  </div>
+                  <button onClick={() => { setEditing(m.id); setDraft(m.text); }} className="text-foreground/40 hover:text-foreground press p-1"><Pencil size={12} /></button>
+                  <button onClick={() => actions.removeMemory(m.id)} className="text-foreground/40 hover:text-destructive press p-1"><Trash2 size={12} /></button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function AIReflectionsCard() {
   const s = useStore((s) => s);
   const [loading, setLoading] = useState(false);
@@ -145,21 +194,23 @@ function AIReflectionsCard() {
   const run = async () => {
     setLoading(true); setError(null); setResult(null);
     try {
-      const recent = Object.keys(s.days).sort().slice(-7).map((k) => {
+      const recentKeys = Object.keys(s.days).sort().slice(-7);
+      const nn = s.habits.filter((h) => h.category === "non-negotiable");
+      const recent = recentKeys.map((k) => {
         const d = s.days[k];
+        const nnDone = nn.filter((h) => d.habits[h.id]?.done).length;
         return {
           date: k,
-          sleepHours: d.sleep?.durationMinutes ? +(d.sleep.durationMinutes / 60).toFixed(1) : undefined,
-          mood: d.mood,
-          energy: d.energy,
-          focus: d.focus,
+          sleptAt: d.sleep?.sleptAt,
+          wokeAt: d.sleep?.wokeAt,
+          nonNegotiables: `${nnDone}/${nn.length}`,
           habitsDone: Object.entries(d.habits).filter(([, v]) => v.done).length,
           tasksDone: d.tasksToday.filter((t) => t.done).length,
           win: d.study.win,
         };
       });
-      const upcomingEvents = (s.events ?? []).filter((e) => e.date >= Object.keys(s.days).sort().slice(-7)[0]).slice(0, 5).map((e) => ({ date: e.date, name: e.name }));
-      const prompt = `You are a gentle, warm life companion for Akshay (who has anxiety). Look at the last 7 days of sleep, mood, energy, habits, wins, tasks, and upcoming events. Give 3-5 short, supportive observations in plain English. NEVER criticize, shame, or compare. NEVER score productivity. Highlight small wins. Be kind. Recent: ${JSON.stringify(recent)}. Upcoming: ${JSON.stringify(upcomingEvents)}`;
+      const upcomingEvents = (s.events ?? []).filter((e) => e.date >= (recentKeys[0] ?? "")).slice(0, 5).map((e) => ({ date: e.date, name: e.name }));
+      const prompt = `You are a gentle, warm life companion for Akshay (who has anxiety). Look at the last 7 days of sleep times, non-negotiable habit consistency, wins, tasks, and upcoming events. Give 3-5 short, supportive observations in plain English. NEVER criticize, shame, or compare. NEVER score productivity. Highlight forest growth and small wins. Be kind. Recent: ${JSON.stringify(recent)}. Upcoming: ${JSON.stringify(upcomingEvents)}`;
 
       let text = "";
       if (apiKey) {
