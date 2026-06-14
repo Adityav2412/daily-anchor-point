@@ -3,7 +3,11 @@ import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, type HabitCategory, type Habit } from "@/lib/store";
 import { currentWeekKeysIST, formatISTDate, istDateKey } from "@/lib/ist";
-import { Plus, Archive, RotateCcw, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Archive, RotateCcw, Pencil, Trash2, GripVertical, Lock } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/habits")({
   head: () => ({ meta: [{ title: "Habits — LIFE" }] }),
