@@ -176,6 +176,11 @@ function load(): State {
   if (!base.archivedHabits) base.archivedHabits = [];
   if (!base.firedReminders) base.firedReminders = {};
   if (!base.missedReminders) base.missedReminders = [];
+  // Migrate legacy habit categories → only "non-negotiable" + "adapting".
+  const mig = (c: HabitCategory): HabitCategory =>
+    c === "mental" ? "non-negotiable" : c === "physical" || c === "custom" ? "adapting" : c;
+  base.habits = base.habits.map((h, i) => ({ ...h, category: mig(h.category), order: h.order ?? i }));
+  base.archivedHabits = base.archivedHabits.map((h) => ({ ...h, category: mig(h.category) }));
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
