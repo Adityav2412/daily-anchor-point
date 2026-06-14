@@ -14,11 +14,10 @@ export const Route = createFileRoute("/timeline")({
 
 const FILTERS: { v: TimelineKind | "all"; label: string }[] = [
   { v: "all", label: "All" },
+  { v: "sleep", label: "Sleep" },
   { v: "mood", label: "Mood" },
   { v: "habit", label: "Habits" },
-  { v: "study", label: "Study" },
   { v: "task", label: "Tasks" },
-  { v: "journal", label: "Journal" },
   { v: "event", label: "Events" },
   { v: "win", label: "Wins" },
 ];
@@ -48,8 +47,9 @@ function TimelinePage() {
           <p className="font-display text-[26px] tracking-tight mt-1">{summary.label}</p>
           <div className="grid grid-cols-2 gap-4 mt-6">
             <SummaryRow emoji="🙂" label="Good mood days" value={String(summary.goodDays)} />
-            <SummaryRow emoji="📚" label="Study time" value={`${summary.studyHours}h`} />
+            <SummaryRow emoji="😴" label="Avg sleep" value={summary.avgSleepMinutes ? `${(summary.avgSleepMinutes/60).toFixed(1)}h` : "—"} />
             <SummaryRow emoji="🏆" label="Wins" value={String(summary.wins)} />
+            <SummaryRow emoji="✅" label="Tasks done" value={String(summary.tasksCompleted)} />
             <SummaryRow emoji="🌱" label="Garden growth" value={summary.growth ? `+${summary.growth}` : "—"} />
           </div>
         </div>
