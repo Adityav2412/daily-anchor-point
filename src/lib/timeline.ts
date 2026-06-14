@@ -1,8 +1,7 @@
 // Build a chronological timeline: sleep, habits done + missed, completed tasks,
-// calendar events, wins, and forest growth milestones.
+// calendar events, wins (Memory Jar), and forest growth milestones.
 
 import { LIFE_START_KEY, type State, type Habit } from "./store";
-import { formatHM } from "./ist";
 import { dayNNStats, stageFor, STAGE_EMOJI, STAGE_LABEL } from "./forest";
 
 export type TimelineKind = "sleep" | "habit" | "missed" | "task" | "event" | "win" | "forest";
@@ -28,8 +27,9 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
     if (k < LIFE_START_KEY) continue;
     const d = s.days[k];
 
+    // Sleep — only times, no duration / score / quality / debt.
     if (d.sleep?.sleptAt) push(k, { id: `${k}-slept`, kind: "sleep", dateKey: k, emoji: "😴", text: `Slept at ${d.sleep.sleptAt}` });
-    if (d.sleep?.wokeAt) push(k, { id: `${k}-woke`, kind: "sleep", dateKey: k, emoji: "☀️", text: `Woke at ${d.sleep.wokeAt}`, detail: d.sleep.durationMinutes ? formatHM(d.sleep.durationMinutes) : undefined });
+    if (d.sleep?.wokeAt) push(k, { id: `${k}-woke`, kind: "sleep", dateKey: k, emoji: "☀️", text: `Woke at ${d.sleep.wokeAt}` });
 
     for (const [hid, log] of Object.entries(d.habits)) {
       const h = habitById.get(hid);
@@ -52,14 +52,18 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
       push(dk, { id: `${dk}-tu-${t.id}`, kind: "task", dateKey: dk, emoji: "✅", text: t.title });
     }
 
-    if (d.study.win) push(k, { id: `${k}-win`, kind: "win", dateKey: k, emoji: "🏆", text: d.study.win });
-
     // Forest milestone: all NN done that day
     const { done, total } = dayNNStats(s, k);
     if (total > 0 && done === total) {
       const stage = stageFor(done, total);
       push(k, { id: `${k}-forest`, kind: "forest", dateKey: k, emoji: STAGE_EMOJI[stage], text: `Forest grew · ${STAGE_LABEL[stage]}` });
     }
+  }
+
+  // Wins — single source of truth is the Memory Jar.
+  for (const m of s.memoryJar ?? []) {
+    if (m.dateKey < LIFE_START_KEY) continue;
+    push(m.dateKey, { id: `win-${m.id}`, kind: "win", dateKey: m.dateKey, emoji: "🏆", text: m.text });
   }
 
   for (const e of s.events ?? []) {
@@ -69,3 +73,4 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
 
   return byDate;
 }
+
