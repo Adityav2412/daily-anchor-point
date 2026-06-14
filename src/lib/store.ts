@@ -342,20 +342,15 @@ export const actions = {
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
       const cur = s.days[key].sleep ?? {};
-      const next: SleepData = { ...cur, ...patch };
-      if (next.sleptAt && next.wokeAt) {
-        const [sh, sm] = next.sleptAt.split(":").map(Number);
-        const [wh, wm] = next.wokeAt.split(":").map(Number);
-        let mins = (wh * 60 + wm) - (sh * 60 + sm);
-        if (mins <= 0) mins += 24 * 60;
-        next.durationMinutes = mins;
-      } else {
-        next.durationMinutes = undefined;
-      }
+      // Store only Slept At + Woke At. No duration / score / quality / debt.
+      const next: SleepData = { sleptAt: patch.sleptAt ?? cur.sleptAt, wokeAt: patch.wokeAt ?? cur.wokeAt };
+      if (patch.sleptAt === undefined && "sleptAt" in patch) next.sleptAt = undefined;
+      if (patch.wokeAt === undefined && "wokeAt" in patch) next.wokeAt = undefined;
       s.days[key].sleep = next;
       return s;
     });
   },
+
   setJournal(patch: Partial<JournalEntry>, dateKey?: string) {
     const key = dateKey ?? istDateKey();
     store.set((s) => {
