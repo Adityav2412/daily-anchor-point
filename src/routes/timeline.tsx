@@ -14,11 +14,10 @@ export const Route = createFileRoute("/timeline")({
 
 const FILTERS: { v: TimelineKind | "all"; label: string }[] = [
   { v: "all", label: "All" },
+  { v: "sleep", label: "Sleep" },
   { v: "mood", label: "Mood" },
   { v: "habit", label: "Habits" },
-  { v: "study", label: "Study" },
   { v: "task", label: "Tasks" },
-  { v: "journal", label: "Journal" },
   { v: "event", label: "Events" },
   { v: "win", label: "Wins" },
 ];
@@ -48,8 +47,9 @@ function TimelinePage() {
           <p className="font-display text-[26px] tracking-tight mt-1">{summary.label}</p>
           <div className="grid grid-cols-2 gap-4 mt-6">
             <SummaryRow emoji="🙂" label="Good mood days" value={String(summary.goodDays)} />
-            <SummaryRow emoji="📚" label="Study time" value={`${summary.studyHours}h`} />
+            <SummaryRow emoji="😴" label="Avg sleep" value={summary.avgSleepMinutes ? `${(summary.avgSleepMinutes/60).toFixed(1)}h` : "—"} />
             <SummaryRow emoji="🏆" label="Wins" value={String(summary.wins)} />
+            <SummaryRow emoji="✅" label="Tasks done" value={String(summary.tasksCompleted)} />
             <SummaryRow emoji="🌱" label="Garden growth" value={summary.growth ? `+${summary.growth}` : "—"} />
           </div>
         </div>
@@ -149,16 +149,17 @@ function AIReflectionsCard() {
         const d = s.days[k];
         return {
           date: k,
+          sleepHours: d.sleep?.durationMinutes ? +(d.sleep.durationMinutes / 60).toFixed(1) : undefined,
           mood: d.mood,
           energy: d.energy,
           focus: d.focus,
           habitsDone: Object.entries(d.habits).filter(([, v]) => v.done).length,
-          studyMin: (d.study.sessions ?? []).reduce((a, x) => a + x.durationMin, 0),
+          tasksDone: d.tasksToday.filter((t) => t.done).length,
           win: d.study.win,
-          journal: d.journal,
         };
       });
-      const prompt = `You are a gentle, warm life companion for Akshay (who has anxiety). Look at the last 7 days and give 3-5 short, supportive observations in plain English. NEVER criticize, shame, or compare. Highlight small wins. Be kind. Data: ${JSON.stringify(recent)}`;
+      const upcomingEvents = (s.events ?? []).filter((e) => e.date >= Object.keys(s.days).sort().slice(-7)[0]).slice(0, 5).map((e) => ({ date: e.date, name: e.name }));
+      const prompt = `You are a gentle, warm life companion for Akshay (who has anxiety). Look at the last 7 days of sleep, mood, energy, habits, wins, tasks, and upcoming events. Give 3-5 short, supportive observations in plain English. NEVER criticize, shame, or compare. NEVER score productivity. Highlight small wins. Be kind. Recent: ${JSON.stringify(recent)}. Upcoming: ${JSON.stringify(upcomingEvents)}`;
 
       let text = "";
       if (apiKey) {

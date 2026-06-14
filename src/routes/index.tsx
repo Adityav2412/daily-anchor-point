@@ -25,15 +25,16 @@ const ENERGIES: { value: Energy; label: string }[] = [
 
 const FOCUS_SUGGESTIONS = [
   "Take care of myself",
-  "Finish one important task",
   "Go for a walk",
-  "Study for 30 minutes",
+  "Call a friend",
+  "Drink enough water",
 ];
 
 function TodayPage() {
   const today = useToday();
   const habits = useStore((s) => s.habits);
   const events = useStore((s) => s.events ?? []);
+  const days = useStore((s) => s.days);
   const garden = useStore((s) => s.garden ?? { stage: 0 });
   const [greeting, setGreeting] = useState("");
   const [longDate, setLongDate] = useState("");
@@ -54,22 +55,29 @@ function TodayPage() {
   const [toughNote, setToughNote] = useState("");
   const toughLogged = !!today.toughDay;
 
-  const [restOpen, setRestOpen] = useState(false);
-  const [restMood, setRestMood] = useState<Mood>("okay");
-  const [restNote, setRestNote] = useState("");
-  const restLogged = !!today.restDay;
-
   const habitDone = habits.filter((h) => today.habits[h.id]?.done).length;
-  const tasksLeft = today.tasksToday.filter((t) => !t.done).length;
-  const studyMin = (today.study.sessions ?? []).reduce((a, s) => a + s.durationMin, 0);
+  const todayKey = istDateKey();
 
-  const upcoming = useMemo(() => {
-    const tk = istDateKey();
+  // Today's agenda preview: today events + today tasks + upcoming tasks due today
+  const agendaToday = useMemo(() => {
+    type Item = { k: "event" | "task"; title: string; done?: boolean };
+    const out: Item[] = [];
+    for (const e of events) if (e.date === todayKey) out.push({ k: "event", title: e.name });
+    const td = days[todayKey];
+    if (td) for (const t of td.tasksToday) out.push({ k: "task", title: t.title, done: t.done });
+    for (const dk of Object.keys(days)) {
+      for (const t of days[dk].tasksUpcoming ?? []) {
+        if (t.dueDate === todayKey) out.push({ k: "task", title: t.title, done: t.done });
+      }
+    }
+    return out;
+  }, [events, days, todayKey]);
+
+  const nextEvent = useMemo(() => {
     return [...events]
-      .filter((e) => e.date >= tk)
+      .filter((e) => e.date >= todayKey)
       .sort((a, b) => a.date.localeCompare(b.date))[0];
-  }, [events]);
-  const upcomingDiff = upcoming ? daysBetween(upcoming.date) : null;
+  }, [events, todayKey]);
 
   const saveFocus = () => actions.setFocus(focusDraft);
   const saveWin = () => {
@@ -82,6 +90,8 @@ function TodayPage() {
     }
   };
 
+  const sleep = today.sleep;
+
   return (
     <AppShell title="Today" subtitle={longDate}>
       <div className="space-y-5 stagger">
@@ -91,10 +101,38 @@ function TodayPage() {
           <p className="font-display text-[32px] leading-tight tracking-tight mt-2">{greeting || "Hello, Akshay"}</p>
         </div>
 
-        {/* LIFE companion — calm first impression */}
+        {/* LIFE companion */}
         <Companion stage={garden.stage} />
 
-        {/* Mood — emotional check-in comes before tracking */}
+        {/* Sleep */}
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Sleep</div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <div className="text-[11px] text-foreground/60 mb-1.5 flex items-center gap-1">😴 Slept at</div>
+              <input
+                type="time"
+                value={sleep?.sleptAt ?? ""}
+                onChange={(e) => actions.setSleep({ sleptAt: e.target.value || undefined })}
+                className="w-full rounded-full bg-muted px-4 py-2.5 text-sm outline-none"
+              />
+            </label>
+            <label className="block">
+              <div className="text-[11px] text-foreground/60 mb-1.5 flex items-center gap-1">☀️ Woke at</div>
+              <input
+                type="time"
+                value={sleep?.wokeAt ?? ""}
+                onChange={(e) => actions.setSleep({ wokeAt: e.target.value || undefined })}
+                className="w-full rounded-full bg-muted px-4 py-2.5 text-sm outline-none"
+              />
+            </label>
+          </div>
+          {sleep?.durationMinutes != null && (
+            <div className="mt-3 text-[13px] text-foreground/70">Duration: <span className="font-medium text-foreground">{formatHM(sleep.durationMinutes)}</span></div>
+          )}
+        </div>
+
+        {/* Mood */}
         <div className="card-paper p-6">
           <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">How are you feeling?</div>
           <div className="grid grid-cols-4 gap-3">
@@ -114,7 +152,24 @@ function TodayPage() {
           </div>
         </div>
 
-        {/* Aaj Ka Focus — one gentle intention */}
+        {/* Energy */}
+        <div className="card-paper p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Energy today</div>
+          <div className="flex gap-2.5">
+            {ENERGIES.map((e) => {
+              const active = today.energy === e.value;
+              return (
+                <button
+                  key={e.value}
+                  onClick={() => actions.setEnergy(e.value)}
+                  className={`flex-1 rounded-full py-3.5 text-[15px] font-medium press transition ${active ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
+                >{e.label}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Aaj Ka Focus */}
         <div className="card-lavender p-7">
           <div className="flex items-center justify-between mb-3">
             <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/60">Aaj Ka Focus</div>
@@ -141,119 +196,60 @@ function TodayPage() {
           )}
         </div>
 
-        {/* Rest Day banner — hides secondary sections */}
-        {restLogged && (
-          <div className="card-sage p-6 animate-fade-up">
-            <div className="text-center">
-              <div className="text-[44px] leading-none">🌿</div>
-              <p className="font-display text-[22px] tracking-tight mt-3">Today is a rest day.</p>
-              <p className="text-[15px] text-foreground/70 mt-2 leading-relaxed">No habits, no tasks, no pressure. Your check-in still counts.</p>
-              {today.restDay?.note && <p className="text-[14px] text-foreground/65 italic mt-3">"{today.restDay.note}"</p>}
-              <button
-                onClick={() => actions.clearRestDay()}
-                className="text-[12px] text-muted-foreground underline underline-offset-2 mt-4 press"
-              >End rest day</button>
+        {/* Habits summary */}
+        <Link to="/habits" className="block">
+          <div className="card-paper p-6 hover-lift">
+            <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Habits</div>
+            <div className="flex items-baseline justify-between gap-3 mt-3">
+              <div className="font-display text-[34px] leading-none">{habitDone} / {habits.length}</div>
+              <div className="text-[13px] text-muted-foreground">completed today</div>
             </div>
           </div>
-        )}
+        </Link>
 
-        {/* Secondary sections — hidden on rest days */}
-        {!restLogged && (
-          <>
-            {/* Energy */}
-            <div className="card-paper p-6">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Energy today</div>
-              <div className="flex gap-2.5">
-                {ENERGIES.map((e) => {
-                  const active = today.energy === e.value;
-                  return (
-                    <button
-                      key={e.value}
-                      onClick={() => actions.setEnergy(e.value)}
-                      className={`flex-1 rounded-full py-3.5 text-[15px] font-medium press transition ${active ? "bg-lavender text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
-                    >{e.label}</button>
-                  );
-                })}
+        {/* Today's agenda preview */}
+        <Link to="/agenda" className="block">
+          <div className="card-paper p-6 hover-lift">
+            <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Today's agenda</div>
+            {agendaToday.length === 0 ? (
+              <div className="mt-3 text-[15px] text-muted-foreground">
+                {nextEvent ? <>Nothing today. Next: <span className="text-foreground">{nextEvent.name}</span></> : "Nothing scheduled."}
               </div>
-            </div>
+            ) : (
+              <ul className="mt-3 space-y-1.5">
+                {agendaToday.slice(0, 4).map((it, i) => (
+                  <li key={i} className="text-[15px] flex items-center gap-2">
+                    <span className="text-xs">{it.k === "event" ? "📅" : it.done ? "✅" : "▢"}</span>
+                    <span className={it.done ? "line-through text-muted-foreground" : ""}>{it.title}</span>
+                  </li>
+                ))}
+                {agendaToday.length > 4 && <li className="text-[12px] text-muted-foreground">+{agendaToday.length - 4} more</li>}
+              </ul>
+            )}
+          </div>
+        </Link>
 
-            {/* Daily snapshot */}
-            <div className="space-y-3">
-              <Stat label="Habits" value={`${habitDone} / ${habits.length}`} sublabel="completed today" to="/habits" />
-              <Stat label="Study" value={studyMin ? formatHM(studyMin) : "—"} sublabel={studyMin ? "today" : "no session yet"} to="/study" />
-              <Stat label="Tasks" value={String(tasksLeft)} sublabel="remaining" to="/tasks" />
-              <Stat
-                label="Upcoming"
-                value={upcoming ? labelDiff(upcomingDiff!) : "—"}
-                sublabel={upcoming?.name ?? "nothing scheduled"}
-                to="/calendar"
-              />
-            </div>
+        {/* Win of the day */}
+        <div className="card-cream p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mb-3">Win of the day</div>
+          <input
+            value={winDraft}
+            onChange={(e) => setWinDraft(e.target.value)}
+            onBlur={saveWin}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            placeholder="One small thing that went right…"
+            className="w-full bg-transparent text-[17px] outline-none placeholder:text-foreground/35"
+          />
+          {today.study.win && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
+        </div>
 
-            {/* Win of the day */}
-            <div className="card-cream p-6">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mb-3">Win of the day</div>
-              <input
-                value={winDraft}
-                onChange={(e) => setWinDraft(e.target.value)}
-                onBlur={saveWin}
-                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                placeholder="One small thing that went right…"
-                className="w-full bg-transparent text-[17px] outline-none placeholder:text-foreground/35"
-              />
-              {today.study.win && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
-            </div>
-          </>
-        )}
-
-        {/* Gentle options */}
-        {!toughLogged && !toughOpen && !restLogged && !restOpen && (
-          <div className="flex gap-3 justify-center pt-1">
-            <button
-              onClick={() => setRestOpen(true)}
-              className="text-[13px] text-muted-foreground underline underline-offset-2 py-2 hover:text-foreground transition"
-            >🌿 Rest day</button>
-            <span className="text-muted-foreground/40">·</span>
+        {/* Bad day mode */}
+        {!toughLogged && !toughOpen && (
+          <div className="flex justify-center pt-1">
             <button
               onClick={() => setToughOpen(true)}
               className="text-[13px] text-muted-foreground underline underline-offset-2 py-2 hover:text-foreground transition"
             >Today was difficult</button>
-          </div>
-        )}
-
-        {restOpen && !restLogged && (
-          <div className="card-sage p-6 animate-fade-up">
-            <p className="font-display text-[22px] tracking-tight leading-tight">🌿 Rest day</p>
-            <p className="text-[15px] text-foreground/70 mt-2 leading-relaxed">Just check in. No habits, no tasks, no pressure. Today still counts.</p>
-            <div className="grid grid-cols-4 gap-2.5 mt-4">
-              {MOODS.map((m) => (
-                <button
-                  key={m.value}
-                  onClick={() => setRestMood(m.value)}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl py-3.5 press transition ${restMood === m.value ? "bg-sage-deep text-primary-foreground" : "bg-card/60 text-foreground/70"}`}
-                >
-                  <span className="text-[26px] leading-none">{m.emoji}</span>
-                  <span className="text-[10px]">{m.label}</span>
-                </button>
-              ))}
-            </div>
-            <textarea
-              value={restNote}
-              onChange={(e) => setRestNote(e.target.value)}
-              placeholder="A short note (optional)"
-              rows={3}
-              className="w-full mt-4 rounded-2xl bg-card/60 p-4 text-[15px] outline-none resize-none placeholder:text-foreground/40"
-            />
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => { actions.setMood(restMood); actions.logRestDay(restNote); setRestOpen(false); }}
-                className="flex-1 rounded-full bg-sage-deep text-primary-foreground py-3 text-[15px] font-medium press"
-              >Save rest day</button>
-              <button
-                onClick={() => setRestOpen(false)}
-                className="rounded-full bg-card/60 text-foreground/70 px-5 text-[15px] press"
-              >Cancel</button>
-            </div>
           </div>
         )}
 
@@ -292,7 +288,7 @@ function TodayPage() {
             </div>
           </div>
         )}
-        {toughLogged && !restLogged && (
+        {toughLogged && (
           <div className="card-sage-soft p-5 text-center text-[15px] text-foreground/75 italic">
             Some days are about getting through. That's enough.
           </div>
@@ -300,29 +296,4 @@ function TodayPage() {
       </div>
     </AppShell>
   );
-}
-
-function Stat({ label, value, sublabel, to }: { label: string; value: string; sublabel?: string; to?: string }) {
-  const inner = (
-    <div className="card-paper p-6 hover-lift">
-      <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</div>
-      <div className="flex items-baseline justify-between gap-3 mt-3">
-        <div className="font-display text-[34px] leading-none">{value}</div>
-        {sublabel && <div className="text-[13px] text-muted-foreground truncate text-right">{sublabel}</div>}
-      </div>
-    </div>
-  );
-  return to ? <Link to={to as any} className="block">{inner}</Link> : inner;
-}
-
-function daysBetween(dateKey: string): number {
-  const today = istDateKey();
-  const [ty, tm, td] = today.split("-").map(Number);
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000);
-}
-function labelDiff(diff: number) {
-  if (diff === 0) return "today";
-  if (diff === 1) return "tomorrow";
-  return `in ${diff}d`;
 }

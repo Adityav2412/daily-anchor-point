@@ -1,10 +1,10 @@
-// Build a chronological timeline by merging mood, energy, wins, habits, study,
-// completed tasks, journal entries, and calendar events.
+// Build a chronological timeline by merging sleep, mood, energy, wins, habits,
+// completed tasks, and calendar events. (Study + Journal removed.)
 
-import { store, studyMinutesFor, LIFE_START_KEY, type State, type Habit } from "./store";
+import { LIFE_START_KEY, type State, type Habit } from "./store";
 import { formatHM } from "./ist";
 
-export type TimelineKind = "mood" | "energy" | "habit" | "study" | "task" | "journal" | "event" | "win";
+export type TimelineKind = "mood" | "energy" | "sleep" | "habit" | "task" | "event" | "win";
 
 export interface TimelineItem {
   id: string;
@@ -30,6 +30,9 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
   for (const k of Object.keys(s.days)) {
     if (k < LIFE_START_KEY) continue;
     const d = s.days[k];
+    if (d.sleep?.durationMinutes) {
+      push(k, { id: `${k}-sleep`, kind: "sleep", dateKey: k, emoji: "😴", text: `Slept ${formatHM(d.sleep.durationMinutes)}`, detail: d.sleep.sleptAt && d.sleep.wokeAt ? `${d.sleep.sleptAt} → ${d.sleep.wokeAt}` : undefined });
+    }
     if (d.mood) push(k, { id: `${k}-mood`, kind: "mood", dateKey: k, emoji: MOOD_EMOJI[d.mood], text: `Mood: ${MOOD_LABEL[d.mood]}` });
     if (d.energy) push(k, { id: `${k}-energy`, kind: "energy", dateKey: k, emoji: ENERGY_EMOJI[d.energy], text: `Energy: ${d.energy}` });
 
@@ -40,28 +43,19 @@ export function buildTimeline(s: State): Record<string, TimelineItem[]> {
       push(k, { id: `${k}-h-${hid}`, kind: "habit", dateKey: k, emoji: h.icon || "🌿", text: h.name });
     }
 
-    const sess = d.study.sessions ?? [];
-    if (sess.length) {
-      const total = sess.reduce((a, x) => a + x.durationMin, 0);
-      const subjects = Array.from(new Set(sess.map((x) => x.subject))).join(", ");
-      push(k, { id: `${k}-study`, kind: "study", dateKey: k, emoji: "📚", text: `Studied ${formatHM(total)}`, detail: subjects });
-    } else if (studyMinutesFor(d) > 0) {
-      push(k, { id: `${k}-study-e`, kind: "study", dateKey: k, emoji: "📚", text: `Studied ${formatHM(studyMinutesFor(d))}` });
-    }
-
     for (const t of d.tasksToday) {
       if (!t.done) continue;
       push(k, { id: `${k}-t-${t.id}`, kind: "task", dateKey: k, emoji: "✅", text: t.title });
     }
+    for (const t of d.tasksUpcoming ?? []) {
+      if (!t.done) continue;
+      const dk = t.dueDate ?? k;
+      if (dk < LIFE_START_KEY) continue;
+      push(dk, { id: `${dk}-tu-${t.id}`, kind: "task", dateKey: dk, emoji: "✅", text: t.title });
+    }
 
     if (d.study.win) {
       push(k, { id: `${k}-win`, kind: "win", dateKey: k, emoji: "🏆", text: d.study.win });
-    }
-
-    const j = d.journal;
-    if (j && (j.feeling || j.wentWell || j.difficult || j.tomorrow)) {
-      const parts = [j.feeling, j.wentWell, j.difficult, j.tomorrow].filter(Boolean).join(" · ");
-      push(k, { id: `${k}-journal`, kind: "journal", dateKey: k, emoji: "📝", text: "Journal", detail: parts });
     }
   }
 

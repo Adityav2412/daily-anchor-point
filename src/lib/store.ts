@@ -86,6 +86,13 @@ export interface DayData {
   energy?: Energy;
   focus?: string;
   journal?: JournalEntry;
+  sleep?: SleepData;
+}
+
+export interface SleepData {
+  sleptAt?: string;
+  wokeAt?: string;
+  durationMinutes?: number;
 }
 
 export interface CalendarEvent {
@@ -297,6 +304,25 @@ export const actions = {
   setFocus(text: string) {
     const key = istDateKey();
     store.set((s) => { if (!s.days[key]) s.days[key] = emptyDay(); s.days[key].focus = text.trim() || undefined; return s; });
+  },
+  setSleep(patch: Partial<SleepData>, dateKey?: string) {
+    const key = dateKey ?? istDateKey();
+    store.set((s) => {
+      if (!s.days[key]) s.days[key] = emptyDay();
+      const cur = s.days[key].sleep ?? {};
+      const next: SleepData = { ...cur, ...patch };
+      if (next.sleptAt && next.wokeAt) {
+        const [sh, sm] = next.sleptAt.split(":").map(Number);
+        const [wh, wm] = next.wokeAt.split(":").map(Number);
+        let mins = (wh * 60 + wm) - (sh * 60 + sm);
+        if (mins <= 0) mins += 24 * 60;
+        next.durationMinutes = mins;
+      } else {
+        next.durationMinutes = undefined;
+      }
+      s.days[key].sleep = next;
+      return s;
+    });
   },
   setJournal(patch: Partial<JournalEntry>, dateKey?: string) {
     const key = dateKey ?? istDateKey();
