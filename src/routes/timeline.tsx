@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { actions, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
 import { buildTimeline, type TimelineKind, type TimelineItem } from "@/lib/timeline";
 import { monthlySummary } from "@/lib/garden";
-import { formatISTDate, istDateKey, formatHM } from "@/lib/ist";
+import { formatISTDate, istDateKey } from "@/lib/ist";
 import { Sparkles, WifiOff, Shuffle, Pencil, Trash2, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/timeline")({
