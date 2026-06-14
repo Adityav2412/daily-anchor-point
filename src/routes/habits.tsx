@@ -3,7 +3,11 @@ import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { actions, useStore, useToday, type HabitCategory, type Habit } from "@/lib/store";
 import { currentWeekKeysIST, formatISTDate, istDateKey } from "@/lib/ist";
-import { Plus, Archive, RotateCcw, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Archive, RotateCcw, Pencil, Trash2, GripVertical, Lock } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/habits")({
   head: () => ({ meta: [{ title: "Habits — LIFE" }] }),
@@ -135,11 +139,18 @@ function HabitRow({ habit, onEdit }: { habit: Habit; onEdit: () => void }) {
 
   const [reasonOpen, setReasonOpen] = useState(false);
   const [reasonOther, setReasonOther] = useState("");
+  const [lockedDialog, setLockedDialog] = useState(false);
+  const locked = !!log; // logged today → drag locked until IST midnight
 
   return (
     <div
-      draggable
+      draggable={!locked}
       onDragStart={(e) => {
+        if (locked) {
+          e.preventDefault();
+          setLockedDialog(true);
+          return;
+        }
         e.dataTransfer.setData("text/habit-id", habit.id);
         e.dataTransfer.effectAllowed = "move";
       }}
@@ -154,7 +165,14 @@ function HabitRow({ habit, onEdit }: { habit: Habit; onEdit: () => void }) {
       className={`p-4 transition ${done ? "card-sage" : missed ? "card-peach" : "card-paper"}`}
     >
       <div className="flex items-center gap-2">
-        <span className="text-foreground/30 cursor-grab" aria-label="Drag"><GripVertical size={14} /></span>
+        <span
+          className={`${locked ? "text-foreground/20 cursor-not-allowed" : "text-foreground/30 cursor-grab"}`}
+          onClick={() => { if (locked) setLockedDialog(true); }}
+          aria-label={locked ? "Locked until tomorrow" : "Drag"}
+          title={locked ? "Locked — already logged today" : "Drag to reorder"}
+        >
+          {locked ? <Lock size={12} /> : <GripVertical size={14} />}
+        </span>
         <div className="text-2xl shrink-0">{habit.icon || "🌿"}</div>
         <div className="flex-1 min-w-0">
           <p className="text-[15px] font-medium truncate">{habit.name}</p>
@@ -166,6 +184,22 @@ function HabitRow({ habit, onEdit }: { habit: Habit; onEdit: () => void }) {
           onDelete={() => { if (confirm("Delete this habit? History is kept.")) actions.removeHabit(habit.id); }}
         />
       </div>
+
+      <AlertDialog open={lockedDialog} onOpenChange={setLockedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Already logged today</AlertDialogTitle>
+            <AlertDialogDescription>
+              This habit has already been logged today. Move it starting tomorrow?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setLockedDialog(false)}>Move Tomorrow</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <div className="mt-3">
         <SwipeToggle
