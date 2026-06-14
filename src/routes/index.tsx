@@ -60,16 +60,17 @@ function TodayPage() {
 
   // Today's agenda preview: today events + today tasks + upcoming tasks due today
   const agendaToday = useMemo(() => {
-    const evs = events.filter((e) => e.date === todayKey).map((e) => ({ k: "event", title: e.name }));
-    const tks: { k: string; title: string; done?: boolean }[] = [];
+    type Item = { k: "event" | "task"; title: string; done?: boolean };
+    const out: Item[] = [];
+    for (const e of events) if (e.date === todayKey) out.push({ k: "event", title: e.name });
     const td = days[todayKey];
-    if (td) for (const t of td.tasksToday) tks.push({ k: "task", title: t.title, done: t.done });
+    if (td) for (const t of td.tasksToday) out.push({ k: "task", title: t.title, done: t.done });
     for (const dk of Object.keys(days)) {
       for (const t of days[dk].tasksUpcoming ?? []) {
-        if (t.dueDate === todayKey) tks.push({ k: "task", title: t.title, done: t.done });
+        if (t.dueDate === todayKey) out.push({ k: "task", title: t.title, done: t.done });
       }
     }
-    return [...evs, ...tks];
+    return out;
   }, [events, days, todayKey]);
 
   const nextEvent = useMemo(() => {
