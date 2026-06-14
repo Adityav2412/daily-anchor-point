@@ -196,6 +196,7 @@ function AIReflectionsCard() {
     try {
       const recentKeys = Object.keys(s.days).sort().slice(-7);
       const nn = s.habits.filter((h) => h.category === "non-negotiable");
+      const jar = s.memoryJar ?? [];
       const recent = recentKeys.map((k) => {
         const d = s.days[k];
         const nnDone = nn.filter((h) => d.habits[h.id]?.done).length;
@@ -206,9 +207,10 @@ function AIReflectionsCard() {
           nonNegotiables: `${nnDone}/${nn.length}`,
           habitsDone: Object.entries(d.habits).filter(([, v]) => v.done).length,
           tasksDone: d.tasksToday.filter((t) => t.done).length,
-          win: d.study.win,
+          win: jar.find((m) => m.dateKey === k)?.text,
         };
       });
+
       const upcomingEvents = (s.events ?? []).filter((e) => e.date >= (recentKeys[0] ?? "")).slice(0, 5).map((e) => ({ date: e.date, name: e.name }));
       const prompt = `You are a gentle, warm life companion for Akshay (who has anxiety). Look at the last 7 days of sleep times, non-negotiable habit consistency, wins, tasks, and upcoming events. Give 3-5 short, supportive observations in plain English. NEVER criticize, shame, or compare. NEVER score productivity. Highlight forest growth and small wins. Be kind. Recent: ${JSON.stringify(recent)}. Upcoming: ${JSON.stringify(upcomingEvents)}`;
 
