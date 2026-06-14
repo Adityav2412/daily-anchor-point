@@ -8,6 +8,7 @@ export interface Habit {
   category: HabitCategory;
   icon?: string;
   createdAt: string;
+  order?: number;
 }
 export interface HabitLog { done: boolean; reason?: string; }
 export type ReminderOffset = 0 | 15 | 60 | 1440;
@@ -175,6 +176,11 @@ function load(): State {
   if (!base.archivedHabits) base.archivedHabits = [];
   if (!base.firedReminders) base.firedReminders = {};
   if (!base.missedReminders) base.missedReminders = [];
+  // Migrate legacy habit categories → only "non-negotiable" + "adapting".
+  const mig = (c: HabitCategory): HabitCategory =>
+    c === "mental" ? "non-negotiable" : c === "physical" || c === "custom" ? "adapting" : c;
+  base.habits = base.habits.map((h, i) => ({ ...h, category: mig(h.category), order: h.order ?? i }));
+  base.archivedHabits = base.archivedHabits.map((h) => ({ ...h, category: mig(h.category) }));
   try { localStorage.setItem(KEY, JSON.stringify(base)); } catch {}
   return base;
 }
@@ -255,7 +261,33 @@ export function yesterdayKey(): string {
 
 export const actions = {
   addHabit(name: string, category: HabitCategory, icon?: string) {
-    store.set((s) => { s.habits.push({ id: crypto.randomUUID(), name, category, icon: icon || "🌿", createdAt: new Date().toISOString() }); return s; });
+    store.set((s) => {
+      const order = (s.habits.reduce((a, h) => Math.max(a, h.order ?? 0), 0)) + 1;
+      s.habits.push({ id: crypto.randomUUID(), name, category, icon: icon || "🌿", createdAt: new Date().toISOString(), order });
+      return s;
+    });
+  },
+  reorderHabits(orderedIds: string[]) {
+    store.set((s) => {
+      const map = new Map(orderedIds.map((id, i) => [id, i]));
+      s.habits.forEach((h) => { if (map.has(h.id)) h.order = map.get(h.id)!; });
+      s.habits.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      return s;
+    });
+  },
+  moveHabit(id: string, category: HabitCategory, beforeId?: string) {
+    store.set((s) => {
+      const h = s.habits.find((x) => x.id === id);
+      if (!h) return s;
+      h.category = category;
+      // place before beforeId in same category, or at end
+      const others = s.habits.filter((x) => x.id !== id && x.category === category).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const targetIdx = beforeId ? others.findIndex((x) => x.id === beforeId) : -1;
+      const newList = [...others];
+      if (targetIdx >= 0) newList.splice(targetIdx, 0, h); else newList.push(h);
+      newList.forEach((x, i) => { x.order = i; });
+      return s;
+    });
   },
   updateHabit(id: string, patch: Partial<Habit>) {
     store.set((s) => { const h = s.habits.find((x) => x.id === id); if (h) Object.assign(h, patch); return s; });

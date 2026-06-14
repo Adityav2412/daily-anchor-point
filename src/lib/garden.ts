@@ -1,48 +1,22 @@
-// Garden growth + daily companion message + monthly summary.
-// Stage never decreases. Growth pauses on missing days; nothing is lost.
+// Garden = forest growth tied to Non-Negotiable habit completion.
 
 import { store, LIFE_START_KEY, type State } from "./store";
 import { istDateKey, lastNDays } from "./ist";
+import { todayForestStage, forestGrowthDays, nonNegotiableHabits } from "./forest";
 
-const STAGES = ["🌱", "🌿", "🌵", "🍀", "🌸", "🌺", "🌻", "🌳"] as const;
-export const MAX_STAGE = STAGES.length - 1;
-
-export function stageEmoji(stage: number): string {
-  return STAGES[Math.max(0, Math.min(MAX_STAGE, stage))];
-}
-
-export function stageLabel(stage: number): string {
-  if (stage <= 0) return "Tiny sprout";
-  if (stage <= 1) return "Growing leaves";
-  if (stage <= 3) return "Spreading roots";
-  if (stage <= 5) return "First blooms";
-  return "Little garden";
-}
-
-function dayHasActivity(s: State, key: string): boolean {
-  const d = s.days[key];
-  if (!d) return false;
-  if (d.mood || d.energy || d.focus) return true;
-  if (d.sleep?.durationMinutes) return true;
-  if (Object.values(d.habits).some((h) => h.done)) return true;
-  if (d.tasksToday.some((t) => t.done)) return true;
-  if (d.study.win) return true;
-  return false;
-}
+export const MAX_STAGE = 5;
+export function stageEmoji(): string { return "🌳"; }
+export function stageLabel(): string { return "Your forest"; }
 
 export function recomputeGarden() {
   const s = store.get();
-  let logged = 0;
-  for (const k of Object.keys(s.days)) {
-    if (k < LIFE_START_KEY) continue;
-    if (dayHasActivity(s, k)) logged++;
-  }
-  const newStage = Math.min(MAX_STAGE, Math.floor(logged / 5));
+  const grown = forestGrowthDays(s, 90);
+  const stage = Math.min(MAX_STAGE, Math.floor(grown / 5));
   const cur = s.garden?.stage ?? 0;
-  if (newStage > cur) {
-    store.set((st) => { st.garden = { ...(st.garden ?? { stage: 0 }), stage: newStage, lastGrowKey: istDateKey() }; return st; });
+  if (stage !== cur) {
+    store.set((st) => { st.garden = { ...(st.garden ?? { stage: 0 }), stage, lastGrowKey: stage > cur ? istDateKey() : st.garden?.lastGrowKey }; return st; });
   } else if (!s.garden) {
-    store.set((st) => { st.garden = { stage: newStage }; return st; });
+    store.set((st) => { st.garden = { stage }; return st; });
   }
 }
 
@@ -72,7 +46,7 @@ export function todaysMessage(): string {
 }
 
 export interface MonthlySummary {
-  goodDays: number;
+  fullDays: number;
   avgSleepMinutes: number;
   wins: number;
   tasksCompleted: number;
@@ -84,7 +58,8 @@ export function monthlySummary(): MonthlySummary {
   const s = store.get();
   const today = new Date();
   const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  let goodDays = 0;
+  const nn = nonNegotiableHabits(s);
+  let fullDays = 0;
   let wins = 0;
   let tasksCompleted = 0;
   let sleepSum = 0;
@@ -92,19 +67,24 @@ export function monthlySummary(): MonthlySummary {
   for (const k of Object.keys(s.days)) {
     if (!k.startsWith(ym) || k < LIFE_START_KEY) continue;
     const d = s.days[k];
-    if (d.mood === "good" || d.mood === "great") goodDays++;
     if (d.sleep?.durationMinutes) { sleepSum += d.sleep.durationMinutes; sleepDays++; }
     tasksCompleted += d.tasksToday.filter((t) => t.done).length;
     tasksCompleted += (d.tasksUpcoming ?? []).filter((t) => t.done && (t.dueDate ?? k).startsWith(ym)).length;
+    if (nn.length > 0) {
+      const allDone = nn.every((h) => d.habits[h.id]?.done);
+      if (allDone) fullDays++;
+    }
   }
   for (const m of s.memoryJar ?? []) {
     if (m.dateKey.startsWith(ym) && m.dateKey >= LIFE_START_KEY) wins++;
   }
   const monthKeys = lastNDays(30).filter((k) => k.startsWith(ym) && k >= LIFE_START_KEY);
-  let monthLogged = 0;
-  for (const k of monthKeys) if (dayHasActivity(s, k)) monthLogged++;
-  const growth = Math.floor(monthLogged / 5);
+  let monthGrown = 0;
+  for (const k of monthKeys) {
+    if (nn.length > 0 && nn.every((h) => s.days[k]?.habits[h.id]?.done)) monthGrown++;
+  }
+  const growth = monthGrown;
   const label = today.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const avgSleepMinutes = sleepDays ? Math.round(sleepSum / sleepDays) : 0;
-  return { goodDays, avgSleepMinutes, wins, tasksCompleted, growth, label };
+  return { fullDays, avgSleepMinutes, wins, tasksCompleted, growth, label };
 }

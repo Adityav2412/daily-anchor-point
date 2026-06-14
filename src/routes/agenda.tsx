@@ -36,17 +36,31 @@ function AgendaPage() {
   const sel = parseKey(selected);
   const [viewYear, setViewYear] = useState(sel.y);
   const [viewMonth, setViewMonth] = useState(sel.m);
+  const [mode, setMode] = useState<"month" | "week">("month");
   const [adding, setAdding] = useState<"event" | "task" | null>(null);
 
-  // Build month grid (Monday-first)
+  // Month grid (Monday-first)
   const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const dow = firstOfMonth.getDay(); // 0=Sun
+  const dow = firstOfMonth.getDay();
   const leading = (dow + 6) % 7;
-  const cells: ({ k: string; d: number } | null)[] = [];
-  for (let i = 0; i < leading; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push({ k: keyOf(viewYear, viewMonth, d), d });
-  while (cells.length % 7 !== 0) cells.push(null);
+  const monthCells: ({ k: string; d: number } | null)[] = [];
+  for (let i = 0; i < leading; i++) monthCells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) monthCells.push({ k: keyOf(viewYear, viewMonth, d), d });
+  while (monthCells.length % 7 !== 0) monthCells.push(null);
+
+  // Week strip (Monday-first) containing selected
+  const selDate = new Date(sel.y, sel.m, sel.d);
+  const selDow = (selDate.getDay() + 6) % 7;
+  const weekStart = new Date(selDate);
+  weekStart.setDate(selDate.getDate() - selDow);
+  const weekCells: { k: string; d: number; m: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const wd = new Date(weekStart);
+    wd.setDate(weekStart.getDate() + i);
+    weekCells.push({ k: keyOf(wd.getFullYear(), wd.getMonth(), wd.getDate()), d: wd.getDate(), m: wd.getMonth() });
+  }
+
 
   // Events / tasks for selected day
   const dayEvents = useMemo(() => events.filter((e) => e.date === selected), [events, selected]);
@@ -80,37 +94,66 @@ function AgendaPage() {
   return (
     <AppShell title="Agenda" subtitle="Events and tasks, on a date.">
       <div className="space-y-5 stagger">
-        {/* Month grid */}
+        {/* Calendar */}
         <div className="card-paper p-4">
           <div className="flex items-center justify-between mb-3">
             <button onClick={() => navMonth(-1)} className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center press"><ChevronLeft size={14} /></button>
             <div className="font-display text-[18px]">{monthLabel}</div>
             <button onClick={() => navMonth(1)} className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center press"><ChevronRight size={14} /></button>
           </div>
+          <div className="flex justify-center mb-3">
+            <div className="inline-flex rounded-full bg-muted p-0.5">
+              <button onClick={() => setMode("week")} className={`text-[11px] px-3 py-1 rounded-full press ${mode === "week" ? "bg-sage text-[#1A1C1A] font-semibold" : "text-foreground/60"}`}>Week</button>
+              <button onClick={() => setMode("month")} className={`text-[11px] px-3 py-1 rounded-full press ${mode === "month" ? "bg-sage text-[#1A1C1A] font-semibold" : "text-foreground/60"}`}>Month</button>
+            </div>
+          </div>
           <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground mb-1">
             {["M","T","W","T","F","S","S"].map((d, i) => <div key={i}>{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((c, i) => {
-              if (!c) return <div key={i} />;
-              const isSel = c.k === selected;
-              const isToday = c.k === todayKey;
-              const dot = hasItems(c.k);
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelected(c.k)}
-                  className={`aspect-square rounded-xl text-[13px] flex flex-col items-center justify-center press transition ${
-                    isSel ? "bg-sage text-[#1A1C1A] font-semibold" : isToday ? "bg-lavender/40 text-foreground" : "hover:bg-muted/50"
-                  }`}
-                >
-                  <span>{c.d}</span>
-                  {dot && <span className={`mt-0.5 h-1 w-1 rounded-full ${isSel ? "bg-[#1A1C1A]" : "bg-sage-deep"}`} />}
-                </button>
-              );
-            })}
-          </div>
+          {mode === "month" ? (
+            <div className="grid grid-cols-7 gap-1">
+              {monthCells.map((c, i) => {
+                if (!c) return <div key={i} />;
+                const isSel = c.k === selected;
+                const isToday = c.k === todayKey;
+                const dot = hasItems(c.k);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setSelected(c.k)}
+                    className={`aspect-square rounded-xl text-[13px] flex flex-col items-center justify-center press transition ${
+                      isSel ? "bg-sage text-[#1A1C1A] font-semibold" : isToday ? "bg-lavender/40 text-foreground" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <span>{c.d}</span>
+                    {dot && <span className={`mt-0.5 h-1 w-1 rounded-full ${isSel ? "bg-[#1A1C1A]" : "bg-sage-deep"}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1">
+              {weekCells.map((c) => {
+                const isSel = c.k === selected;
+                const isToday = c.k === todayKey;
+                const dot = hasItems(c.k);
+                return (
+                  <button
+                    key={c.k}
+                    onClick={() => { setSelected(c.k); setViewYear(parseKey(c.k).y); setViewMonth(parseKey(c.k).m); }}
+                    className={`aspect-square rounded-xl text-[13px] flex flex-col items-center justify-center press transition ${
+                      isSel ? "bg-sage text-[#1A1C1A] font-semibold" : isToday ? "bg-lavender/40 text-foreground" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <span>{c.d}</span>
+                    {dot && <span className={`mt-0.5 h-1 w-1 rounded-full ${isSel ? "bg-[#1A1C1A]" : "bg-sage-deep"}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+
 
         {/* Selected day header */}
         <div className="flex items-center justify-between px-1">
