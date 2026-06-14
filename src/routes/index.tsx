@@ -1,45 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Forest } from "@/components/Forest";
-import { actions, useStore, useToday, type Mood } from "@/lib/store";
-import { istGreeting } from "@/lib/ist";
+import { actions, useStore, useToday } from "@/lib/store";
+import { istDateKey, istGreeting } from "@/lib/ist";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "Today — LIFE" }] }),
   component: TodayPage,
 });
 
-const MOODS: { value: Mood; emoji: string; label: string }[] = [
-  { value: "difficult", emoji: "😔", label: "Difficult" },
-  { value: "okay", emoji: "😐", label: "Okay" },
-  { value: "good", emoji: "🙂", label: "Good" },
-  { value: "great", emoji: "😄", label: "Great" },
-];
-
 function TodayPage() {
   const today = useToday();
   // touch garden so it recomputes on view
   useStore((s) => s.garden);
+  const jar = useStore((s) => s.memoryJar ?? []);
+  const todayKey = istDateKey();
+  const todaysWin = useMemo(() => jar.find((m) => m.dateKey === todayKey), [jar, todayKey]);
+
   const [greeting, setGreeting] = useState("");
   useEffect(() => { setGreeting(istGreeting("Akshay")); }, []);
 
-  const [winDraft, setWinDraft] = useState(today.study.win ?? "");
-  useEffect(() => { setWinDraft(today.study.win ?? ""); }, [today.study.win]);
+  const [winDraft, setWinDraft] = useState(todaysWin?.text ?? "");
+  useEffect(() => { setWinDraft(todaysWin?.text ?? ""); }, [todaysWin?.text]);
 
   const [toughOpen, setToughOpen] = useState(false);
-  const [toughMood, setToughMood] = useState<Mood>("difficult");
   const [toughNote, setToughNote] = useState("");
   const toughLogged = !!today.toughDay;
 
   const saveWin = () => {
     const t = winDraft.trim();
-    if (t && t !== today.study.win) {
-      actions.setStudy({ win: t });
-      actions.addMemory(t);
-    } else if (!t && today.study.win) {
-      actions.setStudy({ win: undefined });
-    }
+    if (t === (todaysWin?.text ?? "")) return;
+    actions.setTodayWin(t);
   };
 
   const sleep = today.sleep;
@@ -50,7 +42,7 @@ function TodayPage() {
         {/* Forest — the heart of the app */}
         <Forest />
 
-        {/* Sleep routine */}
+        {/* Sleep routine — store only Slept At + Woke At, no analytics */}
         <div className="card-paper p-6">
           <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground mb-4">Sleep routine</div>
           <div className="grid grid-cols-2 gap-3">
@@ -75,7 +67,7 @@ function TodayPage() {
           </div>
         </div>
 
-        {/* Win of the day */}
+        {/* Win of the day — single source of truth: Memory Jar */}
         <div className="card-cream p-6">
           <div className="text-[11px] uppercase tracking-[0.24em] text-foreground/55 mb-3">Win of the day</div>
           <input
@@ -86,10 +78,10 @@ function TodayPage() {
             placeholder="One small thing that went right…"
             className="w-full bg-transparent text-[17px] outline-none placeholder:text-foreground/35"
           />
-          {today.study.win && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
+          {todaysWin && <p className="text-[12px] text-foreground/55 italic mt-2">Saved to Memory Jar</p>}
         </div>
 
-        {/* Bad day mode */}
+        {/* Bad day mode — gentle note only, no mood tracking */}
         {!toughLogged && !toughOpen && (
           <div className="flex justify-center pt-1">
             <button
@@ -103,18 +95,6 @@ function TodayPage() {
           <div className="card-paper p-6 animate-fade-up">
             <p className="font-display text-[22px] tracking-tight leading-tight">Some days are about getting through.</p>
             <p className="text-[15px] text-foreground/65 mt-2">That's enough. No need to do more.</p>
-            <div className="grid grid-cols-4 gap-2.5 mt-4">
-              {MOODS.map((m) => (
-                <button
-                  key={m.value}
-                  onClick={() => setToughMood(m.value)}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl py-3.5 press transition ${toughMood === m.value ? "bg-sage text-[#1A1C1A]" : "bg-muted text-foreground/70"}`}
-                >
-                  <span className="text-[26px] leading-none">{m.emoji}</span>
-                  <span className="text-[10px]">{m.label}</span>
-                </button>
-              ))}
-            </div>
             <textarea
               value={toughNote}
               onChange={(e) => setToughNote(e.target.value)}
