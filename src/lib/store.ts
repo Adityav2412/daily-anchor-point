@@ -93,8 +93,8 @@ export interface DayData {
 export interface SleepData {
   sleptAt?: string;
   wokeAt?: string;
-  durationMinutes?: number;
 }
+
 
 export interface CalendarEvent {
   id: string;
@@ -342,20 +342,15 @@ export const actions = {
     store.set((s) => {
       if (!s.days[key]) s.days[key] = emptyDay();
       const cur = s.days[key].sleep ?? {};
-      const next: SleepData = { ...cur, ...patch };
-      if (next.sleptAt && next.wokeAt) {
-        const [sh, sm] = next.sleptAt.split(":").map(Number);
-        const [wh, wm] = next.wokeAt.split(":").map(Number);
-        let mins = (wh * 60 + wm) - (sh * 60 + sm);
-        if (mins <= 0) mins += 24 * 60;
-        next.durationMinutes = mins;
-      } else {
-        next.durationMinutes = undefined;
-      }
+      // Store only Slept At + Woke At. No duration / score / quality / debt.
+      const next: SleepData = { sleptAt: patch.sleptAt ?? cur.sleptAt, wokeAt: patch.wokeAt ?? cur.wokeAt };
+      if (patch.sleptAt === undefined && "sleptAt" in patch) next.sleptAt = undefined;
+      if (patch.wokeAt === undefined && "wokeAt" in patch) next.wokeAt = undefined;
       s.days[key].sleep = next;
       return s;
     });
   },
+
   setJournal(patch: Partial<JournalEntry>, dateKey?: string) {
     const key = dateKey ?? istDateKey();
     store.set((s) => {
@@ -372,6 +367,24 @@ export const actions = {
       return s;
     });
   },
+  // Single source of truth for "Win of the day": exactly one Memory Jar entry per IST date.
+  setTodayWin(text: string, dateKey?: string) {
+    const dk = dateKey ?? istDateKey();
+    const t = text.trim();
+    store.set((s) => {
+      s.memoryJar = s.memoryJar ?? [];
+      const existing = s.memoryJar.find((m) => m.dateKey === dk);
+      if (!t) {
+        if (existing) s.memoryJar = s.memoryJar.filter((m) => m.id !== existing.id);
+      } else if (existing) {
+        existing.text = t;
+      } else {
+        s.memoryJar.unshift({ id: crypto.randomUUID(), text: t, dateKey: dk, createdAt: new Date().toISOString() });
+      }
+      return s;
+    });
+  },
+
   updateMemory(id: string, text: string) {
     store.set((s) => { const m = (s.memoryJar ?? []).find((x) => x.id === id); if (m) m.text = text.trim(); return s; });
   },

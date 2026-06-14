@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { actions, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
 import { buildTimeline, type TimelineKind, type TimelineItem } from "@/lib/timeline";
 import { monthlySummary } from "@/lib/garden";
-import { formatISTDate, istDateKey, formatHM } from "@/lib/ist";
+import { formatISTDate, istDateKey } from "@/lib/ist";
 import { Sparkles, WifiOff, Shuffle, Pencil, Trash2, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/timeline")({
@@ -41,7 +41,7 @@ function TimelinePage() {
           <p className="font-display text-[26px] tracking-tight mt-1">{summary.label}</p>
           <div className="grid grid-cols-2 gap-4 mt-6">
             <SummaryRow emoji="🌳" label="Full forest days" value={String(summary.fullDays)} />
-            <SummaryRow emoji="😴" label="Avg sleep" value={summary.avgSleepMinutes ? formatHM(summary.avgSleepMinutes) : "—"} />
+            <SummaryRow emoji="😴" label="Sleep logged" value={String(summary.sleepLogged)} />
             <SummaryRow emoji="🏆" label="Wins" value={String(summary.wins)} />
             <SummaryRow emoji="✅" label="Tasks done" value={String(summary.tasksCompleted)} />
           </div>
@@ -196,6 +196,7 @@ function AIReflectionsCard() {
     try {
       const recentKeys = Object.keys(s.days).sort().slice(-7);
       const nn = s.habits.filter((h) => h.category === "non-negotiable");
+      const jar = s.memoryJar ?? [];
       const recent = recentKeys.map((k) => {
         const d = s.days[k];
         const nnDone = nn.filter((h) => d.habits[h.id]?.done).length;
@@ -206,9 +207,10 @@ function AIReflectionsCard() {
           nonNegotiables: `${nnDone}/${nn.length}`,
           habitsDone: Object.entries(d.habits).filter(([, v]) => v.done).length,
           tasksDone: d.tasksToday.filter((t) => t.done).length,
-          win: d.study.win,
+          win: jar.find((m) => m.dateKey === k)?.text,
         };
       });
+
       const upcomingEvents = (s.events ?? []).filter((e) => e.date >= (recentKeys[0] ?? "")).slice(0, 5).map((e) => ({ date: e.date, name: e.name }));
       const prompt = `You are a gentle, warm life companion for Akshay (who has anxiety). Look at the last 7 days of sleep times, non-negotiable habit consistency, wins, tasks, and upcoming events. Give 3-5 short, supportive observations in plain English. NEVER criticize, shame, or compare. NEVER score productivity. Highlight forest growth and small wins. Be kind. Recent: ${JSON.stringify(recent)}. Upcoming: ${JSON.stringify(upcomingEvents)}`;
 
