@@ -1,4 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { istDateKey, istMidnightMs, lastNDays, nowIST } from "./ist";
 
 // ============================================================================
@@ -233,6 +235,28 @@ function sanitizeState(parsed: any): State {
 
 function load(): State {
   if (typeof window === "undefined") return emptyState();
+
+  // One-time database reset for June 15, 2026
+  const resetKey = "life_june15_reset_v3";
+  if (localStorage.getItem(resetKey) !== "true") {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          parsed.days = {}; // Wipe history
+          parsed.memoryJar = []; // Clear wins
+          parsed.garden = { stage: 0 }; // Reset garden
+          parsed.missedReminders = [];
+          parsed.firedReminders = {};
+          parsed.dataStartKey = "2026-06-15";
+          localStorage.setItem(KEY, JSON.stringify(parsed));
+        }
+      }
+      localStorage.setItem(resetKey, "true");
+    } catch {}
+  }
+
   let parsed: any = null;
   try {
     const raw = localStorage.getItem(KEY);
@@ -568,6 +592,21 @@ function notify(title: string, body?: string) {
   if (typeof window === "undefined") return;
   const enabled = store.get().settings?.notificationsEnabled !== false;
   if (!enabled) return;
+  if (Capacitor.isNativePlatform()) {
+    LocalNotifications.schedule({
+      notifications: [
+        {
+          title: title,
+          body: body || "",
+          id: new Date().getTime(),
+          schedule: { at: new Date(Date.now() + 100) },
+          actionTypeId: "",
+          extra: null
+        }
+      ]
+    }).catch(() => {});
+    return;
+  }
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     try { new Notification(title, { body, icon: "/icon-192.png", badge: "/icon-192.png", tag: title }); return; } catch {}
   }

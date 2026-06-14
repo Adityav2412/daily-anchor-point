@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { actions, getSettings, useStore } from "@/lib/store";
 import { useTheme } from "@/hooks/use-theme";
 import { Download, Upload, RotateCcw, Moon, Sun, Bell, BellOff, X } from "lucide-react";
@@ -70,8 +72,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   };
 
   const toggleNotif = async () => {
-    if (!notifEnabled && typeof Notification !== "undefined" && Notification.permission === "default") {
-      try { await Notification.requestPermission(); } catch {}
+    if (!notifEnabled) {
+      if (Capacitor.isNativePlatform()) {
+        try { await LocalNotifications.requestPermissions(); } catch {}
+      } else if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        try { await Notification.requestPermission(); } catch {}
+      }
     }
     actions.setSettings({ ...getSettings(), notificationsEnabled: !notifEnabled });
   };

@@ -4,8 +4,20 @@ import { RouterProvider } from "@tanstack/react-router";
 
 import { getRouter } from "./router";
 import "./styles.css";
+import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 
 const router = getRouter();
+
+if (Capacitor.isNativePlatform()) {
+  CapApp.addListener("backButton", ({ canGoBack }) => {
+    if (window.history.length > 1 || canGoBack) {
+      window.history.back();
+    } else {
+      CapApp.exitApp();
+    }
+  });
+}
 
 declare module "@tanstack/react-router" {
   interface Register {
