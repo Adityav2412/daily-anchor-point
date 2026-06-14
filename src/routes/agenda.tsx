@@ -36,17 +36,31 @@ function AgendaPage() {
   const sel = parseKey(selected);
   const [viewYear, setViewYear] = useState(sel.y);
   const [viewMonth, setViewMonth] = useState(sel.m);
+  const [mode, setMode] = useState<"month" | "week">("month");
   const [adding, setAdding] = useState<"event" | "task" | null>(null);
 
-  // Build month grid (Monday-first)
+  // Month grid (Monday-first)
   const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const dow = firstOfMonth.getDay(); // 0=Sun
+  const dow = firstOfMonth.getDay();
   const leading = (dow + 6) % 7;
-  const cells: ({ k: string; d: number } | null)[] = [];
-  for (let i = 0; i < leading; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push({ k: keyOf(viewYear, viewMonth, d), d });
-  while (cells.length % 7 !== 0) cells.push(null);
+  const monthCells: ({ k: string; d: number } | null)[] = [];
+  for (let i = 0; i < leading; i++) monthCells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) monthCells.push({ k: keyOf(viewYear, viewMonth, d), d });
+  while (monthCells.length % 7 !== 0) monthCells.push(null);
+
+  // Week strip (Monday-first) containing selected
+  const selDate = new Date(sel.y, sel.m, sel.d);
+  const selDow = (selDate.getDay() + 6) % 7;
+  const weekStart = new Date(selDate);
+  weekStart.setDate(selDate.getDate() - selDow);
+  const weekCells: { k: string; d: number; m: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const wd = new Date(weekStart);
+    wd.setDate(weekStart.getDate() + i);
+    weekCells.push({ k: keyOf(wd.getFullYear(), wd.getMonth(), wd.getDate()), d: wd.getDate(), m: wd.getMonth() });
+  }
+
 
   // Events / tasks for selected day
   const dayEvents = useMemo(() => events.filter((e) => e.date === selected), [events, selected]);
