@@ -4,13 +4,22 @@ import { istDateKey, formatISTDate } from "@/lib/ist";
 import { STAGE_EMOJI, STAGE_LABEL, dayNNStats, stageFor, recentForest, nonNegotiableHabits } from "@/lib/forest";
 
 export function Forest() {
-  const s = useStore((st) => st);
+  // Narrow subscriptions — re-render only when habits or day-logs actually
+  // change, not on every background reminder write.
+  const habits = useStore((st) => st.habits);
+  const days = useStore((st) => st.days);
   const todayKey = istDateKey();
-  const nn = nonNegotiableHabits(s);
-  const { done, total } = dayNNStats(s, todayKey);
-  const stage = stageFor(done, total);
-  const grid = useMemo(() => recentForest(s, 35), [s]);
-  const grown = grid.filter((c) => c.stage === 5).length;
+
+  const { nn, done, total, stage, grid, grown } = useMemo(() => {
+    const slice = { habits, days } as any;
+    const nn = nonNegotiableHabits(slice);
+    const { done, total } = dayNNStats(slice, todayKey);
+    const stage = stageFor(done, total);
+    const grid = recentForest(slice, 35);
+    const grown = grid.filter((c) => c.stage === 5).length;
+    return { nn, done, total, stage, grid, grown };
+  }, [habits, days, todayKey]);
+
 
   return (
     <div className="card-sage p-7 overflow-hidden">
