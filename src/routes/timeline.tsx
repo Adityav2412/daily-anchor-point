@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
+import { actions, store, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
 import { buildTimeline, type TimelineKind, type TimelineItem } from "@/lib/timeline";
 import { monthlySummary } from "@/lib/garden";
 import { formatISTDate, istDateKey } from "@/lib/ist";
@@ -24,13 +24,22 @@ const FILTERS: { v: TimelineKind | "all"; label: string }[] = [
 ];
 
 function TimelinePage() {
-  const s = useStore((s) => s);
+  // Narrow subscriptions so timeline only rebuilds when its actual inputs change.
+  const habits = useStore((s) => s.habits);
+  const archivedHabits = useStore((s) => s.archivedHabits);
+  const days = useStore((s) => s.days);
+  const memoryJar = useStore((s) => s.memoryJar);
+  const events = useStore((s) => s.events);
   const [filter, setFilter] = useState<TimelineKind | "all">("all");
-  const timeline = useMemo(() => buildTimeline(s), [s]);
-  const summary = useMemo(() => monthlySummary(), [s.days, s.memoryJar, s.habits]);
+  const timeline = useMemo(
+    () => buildTimeline({ habits, archivedHabits, days, memoryJar, events } as any),
+    [habits, archivedHabits, days, memoryJar, events],
+  );
+  const summary = useMemo(() => monthlySummary(), [days, memoryJar, habits]);
 
   const orderedDates = useMemo(() => Object.keys(timeline).sort((a, b) => b.localeCompare(a)), [timeline]);
   const matches = (it: TimelineItem) => filter === "all" || it.kind === filter;
+
 
   return (
     <AppShell title="Timeline" subtitle="A gentle record of your days.">
@@ -183,17 +192,22 @@ function MemoryJarCard() {
 }
 
 function AIReflectionsCard() {
-  const s = useStore((s) => s);
+  // Read fresh state lazily in the click handler — don't subscribe the whole
+  // card to every store change.
+  const apiKeyFromSettings = useStore((s) => s.settings?.geminiApiKey);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const online = typeof navigator === "undefined" ? true : navigator.onLine;
   const envKey = (import.meta.env as any).VITE_GEMINI_API_KEY as string | undefined;
-  const apiKey = envKey || s.settings?.geminiApiKey;
+  const apiKey = envKey || apiKeyFromSettings;
+
 
   const run = async () => {
     setLoading(true); setError(null); setResult(null);
     try {
+      const s = store.get();
+
       const recentKeys = Object.keys(s.days).sort().slice(-7);
       const nn = s.habits.filter((h) => h.category === "non-negotiable");
       const jar = s.memoryJar ?? [];
