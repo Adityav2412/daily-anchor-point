@@ -24,13 +24,22 @@ const FILTERS: { v: TimelineKind | "all"; label: string }[] = [
 ];
 
 function TimelinePage() {
-  const s = useStore((s) => s);
+  // Narrow subscriptions so timeline only rebuilds when its actual inputs change.
+  const habits = useStore((s) => s.habits);
+  const archivedHabits = useStore((s) => s.archivedHabits);
+  const days = useStore((s) => s.days);
+  const memoryJar = useStore((s) => s.memoryJar);
+  const events = useStore((s) => s.events);
   const [filter, setFilter] = useState<TimelineKind | "all">("all");
-  const timeline = useMemo(() => buildTimeline(s), [s]);
-  const summary = useMemo(() => monthlySummary(), [s.days, s.memoryJar, s.habits]);
+  const timeline = useMemo(
+    () => buildTimeline({ habits, archivedHabits, days, memoryJar, events } as any),
+    [habits, archivedHabits, days, memoryJar, events],
+  );
+  const summary = useMemo(() => monthlySummary(), [days, memoryJar, habits]);
 
   const orderedDates = useMemo(() => Object.keys(timeline).sort((a, b) => b.localeCompare(a)), [timeline]);
   const matches = (it: TimelineItem) => filter === "all" || it.kind === filter;
+
 
   return (
     <AppShell title="Timeline" subtitle="A gentle record of your days.">
