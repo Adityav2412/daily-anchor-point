@@ -206,6 +206,8 @@ function AIReflectionsCard() {
   const run = async () => {
     setLoading(true); setError(null); setResult(null);
     try {
+      const s = store.get();
+
       const recentKeys = Object.keys(s.days).sort().slice(-7);
       const nn = s.habits.filter((h) => h.category === "non-negotiable");
       const jar = s.memoryJar ?? [];
