@@ -192,13 +192,16 @@ function MemoryJarCard() {
 }
 
 function AIReflectionsCard() {
-  const s = useStore((s) => s);
+  // Read fresh state lazily in the click handler — don't subscribe the whole
+  // card to every store change.
+  const apiKeyFromSettings = useStore((s) => s.settings?.geminiApiKey);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const online = typeof navigator === "undefined" ? true : navigator.onLine;
   const envKey = (import.meta.env as any).VITE_GEMINI_API_KEY as string | undefined;
-  const apiKey = envKey || s.settings?.geminiApiKey;
+  const apiKey = envKey || apiKeyFromSettings;
+
 
   const run = async () => {
     setLoading(true); setError(null); setResult(null);
