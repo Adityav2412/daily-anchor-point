@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { actions, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
+import { actions, store, useStore, LIFE_START_KEY, type MemoryItem } from "@/lib/store";
 import { buildTimeline, type TimelineKind, type TimelineItem } from "@/lib/timeline";
 import { monthlySummary } from "@/lib/garden";
 import { formatISTDate, istDateKey } from "@/lib/ist";
