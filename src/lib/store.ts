@@ -628,7 +628,7 @@ export function getSettings(): Settings {
 // Notifications & reminders
 // ============================================================================
 
-function notify(title: string, body?: string) {
+function dispatchNotification(title: string, body?: string) {
   if (typeof window === "undefined") return;
   const enabled = store.get().settings?.notificationsEnabled !== false;
   if (!enabled) return;
@@ -656,40 +656,42 @@ function notify(title: string, body?: string) {
 const FRESH_WINDOW_MS = 2 * 60 * 1000;
 const STALE_DROP_MS = 7 * 24 * 60 * 60 * 1000;
 
-function fireOrMiss(rkey: string, scheduledMs: number, title: string, body?: string) {
+// In-memory plan built during a tick; flushed in a single store.set at the end.
+interface PendingReminder { rkey: string; missed?: MissedReminder; now: number; }
+
+function planFireOrMiss(plan: PendingReminder[], rkey: string, scheduledMs: number, title: string, body?: string): boolean {
   const s = store.get();
-  if ((s.firedReminders ?? {})[rkey]) return;
+  if ((s.firedReminders ?? {})[rkey]) return false;
+  if (plan.some((p) => p.rkey === rkey)) return false;
   const now = Date.now();
   const age = now - scheduledMs;
   if (age > STALE_DROP_MS) {
-    store.set((st) => { st.firedReminders = { ...(st.firedReminders ?? {}), [rkey]: now }; return st; });
-    return;
+    plan.push({ rkey, now });
+    return false;
   }
   if (age <= FRESH_WINDOW_MS) {
-    notify(title, body);
-  } else {
-    store.set((st) => {
-      st.missedReminders = st.missedReminders ?? [];
-      if (!st.missedReminders.some((m) => m.key === rkey)) {
-        st.missedReminders.unshift({
-          id: crypto.randomUUID(),
-          key: rkey,
-          title,
-          body,
-          scheduledAt: new Date(scheduledMs).toISOString(),
-        });
-      }
-      return st;
-    });
+    dispatchNotification(title, body);
+    plan.push({ rkey, now });
+    return true;
   }
-  store.set((st) => { st.firedReminders = { ...(st.firedReminders ?? {}), [rkey]: now }; return st; });
+  // Missed
+  const missed: MissedReminder = {
+    id: crypto.randomUUID(),
+    key: rkey,
+    title,
+    body,
+    scheduledAt: new Date(scheduledMs).toISOString(),
+  };
+  plan.push({ rkey, missed, now });
+  return true;
 }
 
 export function startMidnightWatcher() {
   if (typeof window === "undefined") return;
   const tick = () => { store.rolloverIfNeeded(); checkReminders(); };
   tick();
-  const interval = setInterval(tick, 20 * 1000);
+  // 60s is plenty for minute-resolution reminders and reduces wakeups.
+  const interval = setInterval(tick, 60 * 1000);
   return () => clearInterval(interval);
 }
 
@@ -698,6 +700,9 @@ function checkReminders() {
   const now = Date.now();
   const key = istDateKey();
   const day = s.days[key];
+  const plan: PendingReminder[] = [];
+  const remindedTaskIds: string[] = [];
+
   if (day) {
     for (const t of day.tasksToday) {
       if (t.done || !t.remindAt) continue;
@@ -705,8 +710,9 @@ function checkReminders() {
       if (isNaN(ts) || ts > now) continue;
       const rkey = `task:${t.id}:${t.remindAt}`;
       if ((s.firedReminders ?? {})[rkey]) continue;
-      fireOrMiss(rkey, ts, "Reminder: " + t.title, "Tap to open your tasks.");
-      actions.markTaskReminded(t.id);
+      if (planFireOrMiss(plan, rkey, ts, "Reminder: " + t.title, "Tap to open your tasks.")) {
+        remindedTaskIds.push(t.id);
+      }
     }
   }
   for (const e of s.events ?? []) {
@@ -723,8 +729,35 @@ function checkReminders() {
         : e.reminderOffsetMin === 4320
           ? "In 3 days."
           : "In 1 week.";
-    fireOrMiss(rkey, scheduled, "📅 " + e.name, body);
+    planFireOrMiss(plan, rkey, scheduled, "📅 " + e.name, body);
   }
+
+  if (!plan.length && !remindedTaskIds.length) return;
+
+  // Single batched mutation. Use setQuiet for the fired-tracking write so
+  // background ticks don't trigger UI re-renders unless a missed reminder
+  // or task-reminded flag actually changed user-visible state.
+  const hasUiChange = plan.some((p) => p.missed) || remindedTaskIds.length > 0;
+  const setter = hasUiChange ? store.set : store.setQuiet;
+  setter((st) => {
+    st.firedReminders = { ...(st.firedReminders ?? {}) };
+    for (const p of plan) st.firedReminders[p.rkey] = p.now;
+    if (plan.some((p) => p.missed)) {
+      st.missedReminders = st.missedReminders ?? [];
+      for (const p of plan) {
+        if (p.missed && !st.missedReminders.some((m) => m.key === p.rkey)) {
+          st.missedReminders.unshift(p.missed);
+        }
+      }
+    }
+    if (remindedTaskIds.length && st.days[key]) {
+      const ids = new Set(remindedTaskIds);
+      for (const t of st.days[key].tasksToday) {
+        if (ids.has(t.id)) t.reminded = true;
+      }
+    }
+    return st;
+  });
 }
 
 export { nowIST };
