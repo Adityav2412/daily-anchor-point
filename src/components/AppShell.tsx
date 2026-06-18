@@ -44,13 +44,18 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ title: string; body?: string }>;
       setAlertMsg(ce.detail);
-      setTimeout(() => setAlertMsg(null), 8000);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setAlertMsg(null), 8000);
     };
     window.addEventListener("daily:in-app-alert", handler);
-    return () => window.removeEventListener("daily:in-app-alert", handler);
+    return () => {
+      window.removeEventListener("daily:in-app-alert", handler);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   return (
